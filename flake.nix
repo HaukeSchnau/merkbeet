@@ -138,6 +138,60 @@
             '';
           };
 
+          # Development-Plan: das projects-System verlangt ihn auch für
+          # Projekte, die nur ausgeliefert werden.
+          prepareAction = pkgs.writeShellApplication {
+            name = "merkbeet-prepare-action";
+            runtimeInputs = [
+              nodejs
+              pnpm
+              pkgs.coreutils
+            ];
+            text = ''
+              checkout="$(project-context path checkout)"
+              cache_root="$(project-context path cache)"
+              install -d -m 0700 "$cache_root/pnpm-store"
+              cd "$checkout"
+
+              pnpm install --frozen-lockfile --store-dir "$cache_root/pnpm-store"
+              pnpm run setup:web
+              MERKBEET_BASE_URL="" pnpm run build:web
+            '';
+          };
+
+          developmentWeb = pkgs.writeShellApplication {
+            name = "merkbeet-development-web";
+            runtimeInputs = [
+              pkgs.bun
+              pkgs.coreutils
+            ];
+            text = ''
+              checkout="$(project-context path checkout)"
+              state_root="$(project-context path state)"
+
+              export MERKBEET_STATE_DIR="$state_root/data"
+              install -d -m 0700 "$MERKBEET_STATE_DIR"
+
+              export MERKBEET_WEB_DIR="$checkout/dist"
+              export MERKBEET_HOST MERKBEET_PORT MERKBEET_PASSCODE_FILE
+              MERKBEET_HOST="$(project-context endpoint web listen-host)"
+              MERKBEET_PORT="$(project-context endpoint web listen-port)"
+              MERKBEET_PASSCODE_FILE="$(project-context secret-file passcode --required)"
+
+              cd "$checkout"
+              exec bun server/index.ts
+            '';
+          };
+
+          developmentRuntime = nix-infra-modules.lib.projectRuntime.mkDevelopment {
+            inherit pkgs;
+            descriptorPath = ./project.json;
+            actions = {
+              prepare = prepareAction;
+              web = developmentWeb;
+            };
+          };
+
           releaseWeb = pkgs.writeShellApplication {
             name = "merkbeet-release-web";
             runtimeInputs = [
@@ -173,6 +227,7 @@
         {
           default = releaseRuntime.package;
           inherit web service;
+          projectRuntime = developmentRuntime.package;
           projectRelease = releaseRuntime.package;
         };
     in
@@ -191,6 +246,7 @@
             test -f ${packages.web}/canvaskit.wasm
             test -f ${packages.service}/lib/merkbeet-server.js
             test -x ${packages.projectRelease}/bin/project-release-runtime
+            test -x ${packages.projectRuntime}/bin/merkbeet-project-runtime
             cmp ${./project.json} ${packages.projectRelease}/share/project/descriptor.json
             touch $out
           '';
