@@ -82,6 +82,7 @@ const serveWeb = async (pathname: string): Promise<Response> => {
 };
 
 const server = Bun.serve({
+  hostname: config.hostname,
   port: config.port,
   idleTimeout: 30,
   maxRequestBodySize: MAX_PHOTO_BYTES + 1024,
@@ -136,4 +137,4 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Merkbeet-Sync auf http://localhost:${server.port} (Daten in ${config.stateDir})`);
+console.log(`Merkbeet-Sync auf http://${config.hostname}:${server.port} (Daten in ${config.stateDir})`);

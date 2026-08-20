@@ -2,6 +2,8 @@ import { file } from "bun";
 
 /** Einstellungen kommen aus der Umgebung, damit das Nix-Modul sie setzen kann. */
 export type ServerConfig = {
+  /** Adresse, auf der gelauscht wird; hinter Caddy ist das localhost. */
+  hostname: string;
   port: number;
   /** Verzeichnis für Datenbank und Fotos. */
   stateDir: string;
@@ -31,6 +33,7 @@ const readPasscode = async (): Promise<string> => {
 };
 
 export const loadConfig = async (): Promise<ServerConfig> => ({
+  hostname: process.env.MERKBEET_HOST ?? "127.0.0.1",
   port: Number(process.env.MERKBEET_PORT ?? 8787),
   // Reihenfolge mit Bedacht: eine ausdrücklich gesetzte Variable gewinnt gegen
   // systemds STATE_DIRECTORY. Andernfalls schreibt ein Testlauf in das
