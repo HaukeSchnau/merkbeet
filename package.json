@@ -30,7 +30,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "preview": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/render.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:web": "expo export --platform web --output-dir dist",
+    "deploy:web": "bun run build:web && rm -rf /srv/agent-share/merkbeet && mkdir -p /srv/agent-share/merkbeet && cp -r dist/. /srv/agent-share/merkbeet/ && chmod -R g+rX /srv/agent-share/merkbeet"
   },
   "private": true,
   "trustedDependencies": [

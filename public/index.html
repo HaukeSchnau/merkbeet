@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      user-scalable=no ist hier Absicht: Pinch soll den Gartenplan zoomen und
+      nicht die Seite. viewport-fit=cover laesst den Plan bis in die Ecken
+      laufen, wenn die Seite vom Home-Bildschirm aus startet.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, shrink-to-fit=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#fffdf8" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Merkbeet" />
+    <link rel="apple-touch-icon" href="icon.png" />
+    <link rel="icon" href="icon.png" />
+    <title>Merkbeet</title>
+    <style id="expo-reset">
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        overflow: hidden;
+        margin: 0;
+        background-color: #fffdf8;
+        /* Gesten gehoeren dem Plan; kein Wischen und kein Ueberdehnen der Seite. */
+        touch-action: none;
+        overscroll-behavior: none;
+        -webkit-text-size-adjust: 100%;
+      }
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>Merkbeet braucht JavaScript.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

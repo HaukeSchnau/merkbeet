@@ -42,3 +42,6 @@ yarn-error.*
 
 # Von "setup-skia-web" erzeugt
 public/canvaskit.wasm
+
+# Web-Export
+dist/

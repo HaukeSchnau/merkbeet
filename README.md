@@ -28,8 +28,20 @@ bun run android      # oder: bun run ios
 ```
 
 Skia ist kein Teil von Expo Go, deshalb braucht die App einen Dev-Client oder
-einen echten Build (`npx expo run:android`). `bun run web` läuft auch, ist aber
-nur zum schnellen Draufschauen gedacht.
+einen echten Build (`npx expo run:android`).
+
+Die Web-Variante läuft ebenfalls vollständig — Skia kommt dort als CanvasKit
+(WebAssembly) und braucht WebGL, das jeder aktuelle Handy-Browser hat:
+
+```bash
+bun run web           # Dev-Server
+bun run deploy:web    # statischer Export nach /srv/agent-share/merkbeet
+```
+
+Nach dem Deploy liegt sie im Tailnet unter
+<https://files.schnau.dev/merkbeet/>. Der Export ist auf einen Unterpfad
+gebaut (`experiments.baseUrl` in `app.json`); wird er woanders abgelegt, muss
+dieser Wert mitwandern.
 
 ```bash
 bun run typecheck    # tsc --noEmit

@@ -1,4 +1,6 @@
-import { Nunito_700Bold } from "@expo-google-fonts/nunito";
+// Direkt aus dem Unterpfad: der Paketindex zieht sonst alle 16 Schnitte
+// in das Bundle (rund 2 MB), von denen nur dieser gebraucht wird.
+import { Nunito_700Bold } from "@expo-google-fonts/nunito/700Bold";
 import {
   Canvas,
   Circle,
