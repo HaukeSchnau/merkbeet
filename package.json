@@ -36,7 +36,8 @@
     "build:web": "pnpm exec expo export --platform web --output-dir dist",
     "deploy:preview": "MERKBEET_BASE_URL=/merkbeet bun run build:web && rm -rf /srv/agent-share/merkbeet && mkdir -p /srv/agent-share/merkbeet && cp -r dist/. /srv/agent-share/merkbeet/ && chmod -R g+rX /srv/agent-share/merkbeet",
     "server": "bun server/index.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "setup:web": "pnpm exec setup-skia-web public"
   },
   "private": true,
   "trustedDependencies": [

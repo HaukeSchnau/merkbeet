@@ -58,7 +58,7 @@
             pname = "merkbeet-pnpm-dependencies";
             inherit pnpm src version;
             fetcherVersion = 4;
-            hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+            hash = "sha256-WW15aTysbDLWtJNyqVf5/LasZ6EKyjpxxoF3u3Kq3MI=";
           };
 
           # Der Web-Client als statischer Export. Läuft unter dem Basispfad /,
@@ -88,6 +88,11 @@
               export HOME="$TMPDIR/home"
               mkdir -p "$HOME"
               pnpm exec expo export --platform web --output-dir dist
+
+              # Skia läuft im Browser als CanvasKit. Die wasm-Datei kommt aus dem
+              # Paket statt aus dem Repo, damit ihre Version immer zur
+              # installierten Bibliothek passt.
+              cp "$(node -e 'process.stdout.write(require.resolve("canvaskit-wasm/bin/full/canvaskit.wasm"))')" dist/
               runHook postBuild
             '';
 
