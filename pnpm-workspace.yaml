@@ -1,0 +1,8 @@
+# Nachfolger von onlyBuiltDependencies/ignoredBuiltDependencies (pnpm 11).
+# true = darf Build-Skripte ausführen.
+allowBuilds:
+  # Skias postinstall lädt vorgebaute Native-Bibliotheken herunter. Der
+  # Web-Build braucht sie nicht (dort läuft Skia als CanvasKit/WASM), und im
+  # Nix-Sandbox gibt es kein Netz.
+  # TODO: auf true setzen, sobald ein Native-Build (EAS oder expo run) eingerichtet ist.
+  "@shopify/react-native-skia": false

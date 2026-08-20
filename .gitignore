@@ -48,3 +48,6 @@ dist/
 
 # Lokaler Serverzustand
 .state/
+
+# pnpm legt seinen Store hier ab (store-dir ist relativ konfiguriert)
+.pnpm-store/

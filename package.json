@@ -4,12 +4,12 @@
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/nunito": "^0.4.2",
-    "@expo/metro-runtime": "~57.0.12",
+    "@expo/metro-runtime": "57.0.11",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@shopify/react-native-skia": "2.6.2",
-    "expo": "~57.0.15",
-    "expo-file-system": "~57.0.5",
-    "expo-image-picker": "~57.0.12",
+    "expo": "57.0.14",
+    "expo-file-system": "57.0.4",
+    "expo-image-picker": "57.0.11",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -23,16 +23,17 @@
   "devDependencies": {
     "@types/bun": "^1.3.14",
     "@types/react": "~19.2.2",
+    "canvaskit-wasm": "0.41.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "start": "pnpm exec expo start",
+    "android": "pnpm exec expo start --android",
+    "ios": "pnpm exec expo start --ios",
+    "web": "pnpm exec expo start --web",
     "preview": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/render.ts",
-    "typecheck": "tsc --noEmit",
-    "build:web": "expo export --platform web --output-dir dist",
+    "typecheck": "pnpm exec tsc --noEmit",
+    "build:web": "pnpm exec expo export --platform web --output-dir dist",
     "deploy:preview": "MERKBEET_BASE_URL=/merkbeet bun run build:web && rm -rf /srv/agent-share/merkbeet && mkdir -p /srv/agent-share/merkbeet && cp -r dist/. /srv/agent-share/merkbeet/ && chmod -R g+rX /srv/agent-share/merkbeet",
     "server": "bun server/index.ts",
     "test": "bun test"
@@ -40,5 +41,6 @@
   "private": true,
   "trustedDependencies": [
     "@shopify/react-native-skia"
-  ]
+  ],
+  "packageManager": "pnpm@11.2.2"
 }
