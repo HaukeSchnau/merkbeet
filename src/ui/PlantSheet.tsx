@@ -11,16 +11,24 @@ import {
 } from "react-native";
 
 import { speciesOf } from "../garden/species";
-import type { Plant, PlantEdits } from "../garden/types";
+import type { Plant, PlantEdits, PlantId } from "../garden/types";
 import { formatGermanDate, parseGermanDate, todayIso } from "./dates";
-import { pickPlantPhoto } from "./photos";
+import { resolvePhotoUri } from "../sync/endpoint";
+import { pickAndUploadPhoto } from "./photos";
 import { colors, radii, spacing } from "./theme";
 
 export type PlantSheetProps = {
   plant: Plant | null;
   editMode: boolean;
+  /** Fotos gehen zum Server, dafür wird der Zugangscode gebraucht. */
+  passcode: string | null;
   onClose: () => void;
-  onEdit: (edits: PlantEdits) => void;
+  /**
+   * Die Pflanze wird mitgegeben statt aus der Auswahl gelesen: Änderungen
+   * laufen beim Tippen los, und bis sie ankommen, kann die Auswahl schon eine
+   * andere sein.
+   */
+  onEdit: (id: PlantId, edits: PlantEdits) => void;
   onRemove: () => void;
 };
 
@@ -42,31 +50,44 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
  * Detailkarte einer Pflanze. Im Lesemodus reine Anzeige, im Bearbeiten-Modus
  * mit Eingabefeldern -- damit im Alltag nichts versehentlich veraendert wird.
  */
-export const PlantSheet = ({ plant, editMode, onClose, onEdit, onRemove }: PlantSheetProps) => {
+export const PlantSheet = ({ plant, editMode, passcode, onClose, onEdit, onRemove }: PlantSheetProps) => {
   const [dateDraft, setDateDraft] = useState("");
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoProblem, setPhotoProblem] = useState<string | null>(null);
 
   // Der Datumsentwurf ist lokal, weil eine halb getippte Eingabe noch kein
   // gueltiges Datum ist und deshalb nicht gespeichert werden darf.
   useEffect(() => {
     setDateDraft(formatGermanDate(plant?.plantedAt));
+    setPhotoProblem(null);
   }, [plant?.id, plant?.plantedAt]);
 
   if (!plant) return null;
   const species = speciesOf(plant.speciesId);
   const diameter = plant.diameterMeters ?? species.defaultDiameterMeters;
 
-  const commitDate = () => {
-    if (dateDraft.trim() === "") {
-      onEdit({ plantedAt: undefined });
+  /**
+   * Das Datum braucht einen eigenen Entwurf, weil "14.0" noch kein Datum ist.
+   * Sobald die Eingabe ein gültiges Datum ergibt, wird sie sofort übernommen;
+   * beim Verlassen des Feldes wird Unsinn zurückgesetzt.
+   */
+  const changeDate = (text: string) => {
+    setDateDraft(text);
+    if (text.trim() === "") {
+      onEdit(plant.id, { plantedAt: undefined });
       return;
     }
-    const iso = parseGermanDate(dateDraft);
-    if (iso) onEdit({ plantedAt: iso });
-    else setDateDraft(formatGermanDate(plant.plantedAt));
+    const iso = parseGermanDate(text);
+    if (iso) onEdit(plant.id, { plantedAt: iso });
+  };
+
+  const commitDate = () => {
+    if (dateDraft.trim() === "") return;
+    if (!parseGermanDate(dateDraft)) setDateDraft(formatGermanDate(plant.plantedAt));
   };
 
   const changeDiameter = (delta: number) => {
-    onEdit({ diameterMeters: Math.round(Math.min(6, Math.max(0.2, diameter + delta)) * 10) / 10 });
+    onEdit(plant.id, { diameterMeters: Math.round(Math.min(6, Math.max(0.2, diameter + delta)) * 10) / 10 });
   };
 
   return (
@@ -76,7 +97,7 @@ export const PlantSheet = ({ plant, editMode, onClose, onEdit, onRemove }: Plant
         <View style={styles.handle} />
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {plant.photoUri ? (
-            <Image source={{ uri: plant.photoUri }} style={styles.photo} resizeMode="cover" />
+            <Image source={{ uri: resolvePhotoUri(plant.photoUri) }} style={styles.photo} resizeMode="cover" />
           ) : null}
 
           {editMode ? (
@@ -86,10 +107,10 @@ export const PlantSheet = ({ plant, editMode, onClose, onEdit, onRemove }: Plant
                 defaultValue={plant.name ?? ""}
                 placeholder={species.name}
                 placeholderTextColor={colors.textMuted}
-                onEndEditing={(event) => {
-                  const value = event.nativeEvent.text.trim();
-                  onEdit({ name: value === "" ? undefined : value });
-                }}
+                // Beim Tippen übernehmen: das Verschicken ist ohnehin gebündelt,
+                // und niemand soll eine Notiz verlieren, weil er die Karte
+                // zuschiebt, ohne das Feld vorher zu verlassen.
+                onChangeText={(text) => onEdit(plant.id, { name: text.trim() === "" ? undefined : text })}
               />
             </Field>
           ) : (
@@ -109,7 +130,7 @@ export const PlantSheet = ({ plant, editMode, onClose, onEdit, onRemove }: Plant
                     placeholder="TT.MM.JJJJ"
                     placeholderTextColor={colors.textMuted}
                     keyboardType="numbers-and-punctuation"
-                    onChangeText={setDateDraft}
+                    onChangeText={changeDate}
                     onEndEditing={commitDate}
                   />
                   <Pressable
@@ -117,7 +138,7 @@ export const PlantSheet = ({ plant, editMode, onClose, onEdit, onRemove }: Plant
                     onPress={() => {
                       const iso = todayIso();
                       setDateDraft(formatGermanDate(iso));
-                      onEdit({ plantedAt: iso });
+                      onEdit(plant.id, { plantedAt: iso });
                     }}
                   >
                     <Text style={styles.secondaryButtonText}>Heute</Text>
@@ -144,25 +165,32 @@ export const PlantSheet = ({ plant, editMode, onClose, onEdit, onRemove }: Plant
                   placeholder="Standort, Pflege, Herkunft …"
                   placeholderTextColor={colors.textMuted}
                   multiline
-                  onEndEditing={(event) => {
-                    const value = event.nativeEvent.text.trim();
-                    onEdit({ notes: value === "" ? undefined : value });
-                  }}
+                  onChangeText={(text) => onEdit(plant.id, { notes: text.trim() === "" ? undefined : text })}
                 />
               </Field>
 
               <Pressable
-                style={styles.secondaryButtonWide}
+                style={[styles.secondaryButtonWide, (photoBusy || !passcode) && styles.buttonDisabled]}
+                disabled={photoBusy || !passcode}
                 onPress={() => {
-                  void pickPlantPhoto(plant.id).then((uri) => {
-                    if (uri) onEdit({ photoUri: uri });
-                  });
+                  setPhotoBusy(true);
+                  setPhotoProblem(null);
+                  void pickAndUploadPhoto(passcode ?? "")
+                    .then((result) => {
+                      if (result.ok) onEdit(plant.id, { photoUri: result.photoUri });
+                      else if (result.reason === "offline")
+                        setPhotoProblem("Für ein Foto braucht Merkbeet kurz eine Verbindung.");
+                      else if (result.reason === "abgelehnt")
+                        setPhotoProblem("Dieses Bild konnte nicht gespeichert werden.");
+                    })
+                    .finally(() => setPhotoBusy(false));
                 }}
               >
                 <Text style={styles.secondaryButtonText}>
-                  {plant.photoUri ? "Foto ersetzen" : "Foto hinzufügen"}
+                  {photoBusy ? "Lädt hoch …" : plant.photoUri ? "Foto ersetzen" : "Foto hinzufügen"}
                 </Text>
               </Pressable>
+              {photoProblem ? <Text style={styles.problem}>{photoProblem}</Text> : null}
 
               <Pressable style={styles.dangerButton} onPress={onRemove}>
                 <Text style={styles.dangerButtonText}>Pflanze entfernen</Text>
@@ -251,6 +279,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
   },
   secondaryButtonText: { fontSize: 15, fontWeight: "600", color: colors.text },
+  buttonDisabled: { opacity: 0.5 },
+  problem: { fontSize: 14, color: colors.danger },
   stepper: {
     width: 48,
     height: 48,

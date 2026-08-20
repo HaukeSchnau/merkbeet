@@ -7,6 +7,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import type { SpeciesId } from "./src/garden/species";
 import type { Point } from "./src/garden/types";
 import { useGarden } from "./src/state/useGarden";
+import { PasscodeScreen } from "./src/ui/PasscodeScreen";
 import { PlantSheet } from "./src/ui/PlantSheet";
 import { SpeciesPicker } from "./src/ui/SpeciesPicker";
 import { colors, radii, spacing } from "./src/ui/theme";
@@ -48,6 +49,19 @@ export default function App() {
     setSelectedId(null);
   }, [garden, selectedId]);
 
+  if (garden.ready && !garden.passcode) {
+    return (
+      <GestureHandlerRootView style={styles.root}>
+        <SafeAreaProvider>
+          <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
+            <StatusBar style="dark" />
+            <PasscodeScreen onAccepted={garden.setPasscode} />
+          </SafeAreaView>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
@@ -56,8 +70,10 @@ export default function App() {
           <TopBar
             editMode={editMode}
             showLabels={showLabels}
+            status={garden.status}
             onToggleEdit={toggleEdit}
             onToggleLabels={() => setShowLabels((previous) => !previous)}
+            onSyncNow={garden.syncNow}
           />
 
           {garden.ready ? (
@@ -100,8 +116,9 @@ export default function App() {
           <PlantSheet
             plant={selected}
             editMode={editMode}
+            passcode={garden.passcode}
             onClose={() => setSelectedId(null)}
-            onEdit={(edits) => selectedId && garden.editPlant(selectedId, edits)}
+            onEdit={garden.editPlant}
             onRemove={removeSelected}
           />
 

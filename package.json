@@ -17,7 +17,8 @@
     "react-native-gesture-handler": "~2.32.0",
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-web": "^0.21.2"
+    "react-native-web": "^0.21.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
@@ -32,7 +33,9 @@
     "preview": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/render.ts",
     "typecheck": "tsc --noEmit",
     "build:web": "expo export --platform web --output-dir dist",
-    "deploy:web": "bun run build:web && rm -rf /srv/agent-share/merkbeet && mkdir -p /srv/agent-share/merkbeet && cp -r dist/. /srv/agent-share/merkbeet/ && chmod -R g+rX /srv/agent-share/merkbeet"
+    "deploy:preview": "MERKBEET_BASE_URL=/merkbeet bun run build:web && rm -rf /srv/agent-share/merkbeet && mkdir -p /srv/agent-share/merkbeet && cp -r dist/. /srv/agent-share/merkbeet/ && chmod -R g+rX /srv/agent-share/merkbeet",
+    "server": "bun server/index.ts",
+    "test": "bun test"
   },
   "private": true,
   "trustedDependencies": [

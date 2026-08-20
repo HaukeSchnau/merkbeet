@@ -1,25 +1,29 @@
-import { Directory, File, Paths } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 
-const PHOTO_DIRECTORY = "plant-photos";
+import { uploadPhoto } from "../sync/client";
+import { readPhotoBytes } from "./photoBytes";
 
 /**
- * Waehlt ein Foto aus der Galerie und legt eine dauerhafte Kopie im
- * App-Verzeichnis ab. Die URI der Galerie selbst ist nur temporaer und waere
- * beim naechsten Start moeglicherweise ungueltig.
+ * Fotos gehören zum geteilten Stand, also müssen sie auf den Server -- eine
+ * lokale Dateiadresse wäre auf den anderen Geräten wertlos. Deshalb braucht
+ * das Hinzufügen eines Fotos eine Verbindung; alles andere in der App
+ * funktioniert auch offline.
  */
-export const pickPlantPhoto = async (plantId: string): Promise<string | null> => {
-  const result = await ImagePicker.launchImageLibraryAsync({
+export type PhotoOutcome =
+  | { ok: true; photoUri: string }
+  | { ok: false; reason: "abgebrochen" | "offline" | "abgelehnt" };
+
+export const pickAndUploadPhoto = async (passcode: string): Promise<PhotoOutcome> => {
+  const picked = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ["images"],
-    quality: 0.7,
+    // Etwas herunterrechnen: die Bilder sollen über Mobilfunk hochgehen.
+    quality: 0.6,
   });
-  const asset = result.canceled ? undefined : result.assets[0];
-  if (!asset) return null;
+  const asset = picked.canceled ? undefined : picked.assets[0];
+  if (!asset) return { ok: false, reason: "abgebrochen" };
 
-  const directory = new Directory(Paths.document, PHOTO_DIRECTORY);
-  if (!directory.exists) directory.create({ intermediates: true });
-
-  const target = new File(directory, `${plantId}-${Date.now()}.jpg`);
-  await new File(asset.uri).copy(target);
-  return target.uri;
+  const bytes = await readPhotoBytes(asset.uri);
+  const result = await uploadPhoto(passcode, bytes, asset.mimeType ?? "image/jpeg");
+  if (result.ok) return { ok: true, photoUri: result.value.photoUri };
+  return { ok: false, reason: result.failure.kind === "offline" ? "offline" : "abgelehnt" };
 };

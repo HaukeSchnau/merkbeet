@@ -45,3 +45,6 @@ public/canvaskit.wasm
 
 # Web-Export
 dist/
+
+# Lokaler Serverzustand
+.state/
