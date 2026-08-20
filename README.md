@@ -29,7 +29,8 @@ pnpm run android     # oder: pnpm run ios
 ```
 
 Skia ist kein Teil von Expo Go, deshalb braucht die App einen Dev-Client oder
-einen echten Build (`npx expo run:android`).
+einen echten Build. Für Android gibt es eine fertige APK — wie sie gebaut wird,
+steht in [docs/android.md](docs/android.md).
 
 Die Web-Variante läuft ebenfalls vollständig — Skia kommt dort als CanvasKit
 (WebAssembly) und braucht WebGL, das jeder aktuelle Handy-Browser hat.
