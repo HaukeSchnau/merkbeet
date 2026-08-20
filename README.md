@@ -24,33 +24,49 @@ eine Garten.
 ## Loslegen
 
 ```bash
-bun install
-bun run android      # oder: bun run ios
+pnpm install
+pnpm run android     # oder: pnpm run ios
 ```
 
 Skia ist kein Teil von Expo Go, deshalb braucht die App einen Dev-Client oder
 einen echten Build (`npx expo run:android`).
 
 Die Web-Variante läuft ebenfalls vollständig — Skia kommt dort als CanvasKit
-(WebAssembly) und braucht WebGL, das jeder aktuelle Handy-Browser hat:
+(WebAssembly) und braucht WebGL, das jeder aktuelle Handy-Browser hat.
+
+## Wo es läuft
+
+**<https://merkbeet.schnau.dev>** — öffentlich erreichbar, weil die Geräte
+meiner Eltern nicht im Tailnet sind. Geschützt durch einen gemeinsamen
+Zugangscode; der Code steht in `secrets/secrets.yaml` in `~/infra` unter
+`projects/merkbeet/passcode`.
+
+Der Dienst ist als `projects.merkbeet` in `~/infra` deklariert. Ein Deployment
+holt den Stand von `main` aus der Gitea:
 
 ```bash
-bun run web           # Dev-Server
-bun run deploy:web    # statischer Export nach /srv/agent-share/merkbeet
+pnpm run typecheck && pnpm run test   # vorher
+jj-push main                          # dann
+cd ~/infra && nix flake lock --update-input merkbeet && just deploy-host srv-2
 ```
 
-Nach dem Deploy liegt sie im Tailnet unter
-<https://files.schnau.dev/merkbeet/>. Der Export ist auf einen Unterpfad
-gebaut (`experiments.baseUrl` in `app.json`); wird er woanders abgelegt, muss
-dieser Wert mitwandern.
+Lokal:
 
 ```bash
-bun run typecheck    # tsc --noEmit
-bun run test         # Merge-Konvergenz und Sync-Dienst über HTTP
-bun run preview      # rendert docs/preview/*.png ohne Gerät oder Emulator
+pnpm install
+pnpm run setup:web    # legt canvaskit.wasm in public/ ab (nicht im Repo)
+pnpm run web          # Dev-Server
+pnpm run server       # Sync-Dienst, braucht MERKBEET_PASSCODE
+pnpm run deploy:preview   # Vorschau ins Tailnet, gegen den echten Dienst
 ```
 
-`bun run preview` ruft denselben Zeichencode wie die App auf, nur mit CanvasKit
+```bash
+pnpm run typecheck   # tsc --noEmit
+pnpm run test        # Merge-Konvergenz und Sync-Dienst über HTTP
+pnpm run preview     # rendert docs/preview/*.png ohne Gerät oder Emulator
+```
+
+`pnpm run preview` ruft denselben Zeichencode wie die App auf, nur mit CanvasKit
 in Node statt React Native. Das ist der schnellste Weg, an der Grafik zu
 arbeiten: einmal laufen lassen, PNG anschauen.
 
