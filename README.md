@@ -18,7 +18,8 @@ eine Garten.
 - Etiketten lassen sich ausblenden; beim Herauszoomen verschwinden sie von selbst
 - Bearbeiten-Modus: erst darin lässt sich etwas verschieben, ändern, hinzufügen
   oder entfernen — im Alltag kann also nichts verrutschen
-- Alles bleibt lokal auf dem Gerät
+- Gemeinsamer Stand auf allen Geräten, offline weiterarbeiten inklusive —
+  siehe [docs/sync.md](docs/sync.md)
 
 ## Loslegen
 
@@ -45,6 +46,7 @@ dieser Wert mitwandern.
 
 ```bash
 bun run typecheck    # tsc --noEmit
+bun run test         # Merge-Konvergenz und Sync-Dienst über HTTP
 bun run preview      # rendert docs/preview/*.png ohne Gerät oder Emulator
 ```
 
@@ -56,14 +58,16 @@ arbeiten: einmal laufen lassen, PNG anschauen.
 
 ```
 src/garden/     Datenmodell und der Garten selbst (plan.ts, species.ts)
-src/state/      Zustand und lokale Persistenz
+src/state/      Zustand, lokale Persistenz, Sync-Zyklus
+src/sync/       Sync-Datenmodell und Zusammenführen (rein, mit Tests)
 src/view/       Skia-Rendering, Viewport, Gesten
 src/ui/         Bildschirme und Bedienelemente
+server/         Sync-Dienst: Bun, SQLite, liefert den Web-Client mit aus
 scripts/        Ableitung der Skizzendaten, Vorschau-Renderer
-docs/           Gartenmodell, Referenzskizze, Vorschaubilder
+docs/           Gartenmodell, Sync, Referenzskizze, Vorschaubilder
 ```
 
-Zwei Entscheidungen, die den Rest erklären:
+Drei Entscheidungen, die den Rest erklären:
 
 **Koordinaten sind Meter.** Der Viewport rechnet in Pixel pro Meter um. Damit
 sind Beetgeometrie und Pflanzenpositionen unabhängig von der Bildschirmgröße,
@@ -79,6 +83,11 @@ Pflanze immer gleich aussieht.
 Sobald es gezeichnete Bilder gibt, wird pro Art nur der `art`-Eintrag von
 `{ kind: "procedural", … }` auf `{ kind: "asset", source: require("…png") }`
 umgestellt. Renderer und Daten bleiben unverändert.
+
+**Synchronisiert wird die Abweichung, nicht der Garten.** Über die Leitung geht
+nur, was Menschen geändert haben — je Feld mit einem Zeitstempel vom Server.
+Damit bleiben Korrekturen an `plan.ts` überall wirksam, und zwei Leute können am
+selben Strauch arbeiten, ohne sich zu überschreiben.
 
 ![Die Arten](docs/preview/species.png)
 

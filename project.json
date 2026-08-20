@@ -1,0 +1,34 @@
+{
+  "$schema": "https://raw.githubusercontent.com/HaukeSchnau/nix-infra-modules/main/schemas/project-descriptor/v2.json",
+  "schemaVersion": 2,
+  "project": "merkbeet",
+  "development": {
+    "workloads": {
+      "web": {}
+    },
+    "endpoints": {
+      "web": {
+        "health": {
+          "paths": ["/healthz"],
+          "startupTimeoutSec": 30,
+          "requestTimeoutSec": 10
+        }
+      }
+    }
+  },
+  "release": {
+    "health": {
+      "paths": ["/healthz", "/"],
+      "startupTimeoutSec": 30,
+      "requestTimeoutSec": 10
+    },
+    "stateDirectories": ["data"],
+    "ingress": {
+      "compression": true,
+      "requestBodyMaxBytes": 12583936,
+      "responseHeaders": {
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
+      }
+    }
+  }
+}
