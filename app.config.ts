@@ -35,6 +35,15 @@ const config: ExpoConfig = {
   },
   plugins: [
     [
+      "expo-splash-screen",
+      {
+        // Beim Start dieselbe Sternmagnolie auf Beeterde wie im Icon.
+        image: "./assets/splash-icon.png",
+        backgroundColor: "#5a4130",
+        imageWidth: 320,
+      },
+    ],
+    [
       "expo-image-picker",
       {
         photosPermission: "Merkbeet zeigt Fotos deiner Pflanzen in der Pflanzenkarte.",

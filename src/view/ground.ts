@@ -24,7 +24,8 @@ import { textWidth } from "./text";
  * der Plan bei jedem Zoomfaktor scharf.
  */
 
-const MATERIAL = {
+/** Die Materialfarben des Plans. Auch das App-Icon greift darauf zu. */
+export const MATERIAL = {
   lawn: { base: "#7fa65f", shade: "#6d9350", blade: "#94b972" },
   house: { base: "#dcd6cc", edge: "#b9b1a4", roof: "#cfc7ba" },
   terrace: { base: "#cdc5b8", joint: "#aca395", tint: "#d6cfc3" },

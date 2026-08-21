@@ -65,6 +65,7 @@ pnpm run deploy:preview   # Vorschau ins Tailnet, gegen den echten Dienst
 pnpm run typecheck   # tsc --noEmit
 pnpm run test        # Merge-Konvergenz und Sync-Dienst über HTTP
 pnpm run preview     # rendert docs/preview/*.png ohne Gerät oder Emulator
+pnpm run icons       # rendert assets/*.png -- das Icon kommt aus dem Code
 ```
 
 `pnpm run preview` ruft denselben Zeichencode wie die App auf, nur mit CanvasKit
@@ -100,6 +101,13 @@ Pflanze immer gleich aussieht.
 Sobald es gezeichnete Bilder gibt, wird pro Art nur der `art`-Eintrag von
 `{ kind: "procedural", … }` auf `{ kind: "asset", source: require("…png") }`
 umgestellt. Renderer und Daten bleiben unverändert.
+
+**Das Icon ist gezeichnet, nicht gemalt.** `pnpm run icons` rendert die
+Sternmagnolie von oben auf Beeterde — mit demselben Code, der sie im Plan
+zeichnet (`src/view/iconArt.ts`). Kein Bildprogramm, und aus dem Repo
+reproduzierbar. Für das monochrome Android-Icon steht eine reduzierte
+Blütenform daneben, weil eine einfarbige Silhouette der ganzen Pflanze zu
+einem Klumpen verschmilzt.
 
 **Synchronisiert wird die Abweichung, nicht der Garten.** Über die Leitung geht
 nur, was Menschen geändert haben — je Feld mit einem Zeitstempel vom Server.

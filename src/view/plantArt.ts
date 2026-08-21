@@ -189,8 +189,11 @@ const drawUmbel = (canvas: SkCanvas, cx: number, cy: number, size: number, palet
   }
 };
 
-/** Sternfoermige Einzelbluete -- Sternmagnolie. */
-const drawStar = (canvas: SkCanvas, cx: number, cy: number, size: number, palette: PlantPalette, rng: Rng) => {
+/**
+ * Sternfoermige Einzelbluete -- Sternmagnolie. Wird auch vom App-Icon benutzt,
+ * damit dort dieselbe Bluetenform steht wie im Plan.
+ */
+export const drawStar = (canvas: SkCanvas, cx: number, cy: number, size: number, palette: PlantPalette, rng: Rng) => {
   const petal = fill(palette.bloom ?? "#ffffff");
   const phase = rng.range(0, 360);
   canvas.save();
