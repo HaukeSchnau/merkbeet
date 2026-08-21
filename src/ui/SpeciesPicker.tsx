@@ -1,7 +1,8 @@
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { BottomSheet, Host, List, ListItem, Text } from "@expo/ui";
+import { StyleSheet, View } from "react-native";
 
 import { SPECIES, SPECIES_IDS, type SpeciesId } from "../garden/species";
-import { colors, radii, spacing } from "./theme";
+import { colors, radii } from "./theme";
 
 export type SpeciesPickerProps = {
   visible: boolean;
@@ -15,59 +16,39 @@ const swatchColor = (id: SpeciesId): string => {
   return art.kind === "procedural" ? (art.palette.bloom ?? art.palette.leafMid) : colors.surfaceMuted;
 };
 
+/**
+ * Artenauswahl als natives Bottom Sheet mit einer Systemliste: auf Android
+ * Material 3, auf iOS eine SwiftUI-Liste, im Browser ein Nachbau.
+ */
 export const SpeciesPicker = ({ visible, onPick, onCancel }: SpeciesPickerProps) => (
-  <Modal visible={visible} animationType="slide" transparent onRequestClose={onCancel}>
-    <Pressable style={styles.backdrop} onPress={onCancel} />
-    <View style={styles.sheet}>
-      <Text style={styles.title}>Was wurde gepflanzt?</Text>
-      <ScrollView contentContainerStyle={styles.list}>
+  <Host seedColor={colors.accent} style={styles.host} pointerEvents="box-none">
+    <BottomSheet isPresented={visible} onDismiss={onCancel} snapPoints={["half", "full"]}>
+      <List>
         {SPECIES_IDS.map((id) => (
-          <Pressable key={id} style={styles.item} onPress={() => onPick(id)}>
-            <View style={[styles.swatch, { backgroundColor: swatchColor(id) }]} />
-            <View style={styles.itemText}>
-              <Text style={styles.itemName}>{SPECIES[id].name}</Text>
-              {SPECIES[id].botanical ? (
-                <Text style={styles.itemBotanical}>{SPECIES[id].botanical}</Text>
-              ) : null}
-            </View>
-          </Pressable>
+          <ListItem
+            key={id}
+            onPress={() => onPick(id)}
+            leading={<Swatch color={swatchColor(id)} />}
+            supportingText={SPECIES[id].botanical}
+          >
+            <Text>{SPECIES[id].name}</Text>
+          </ListItem>
         ))}
-      </ScrollView>
-      <Pressable style={styles.cancel} onPress={onCancel}>
-        <Text style={styles.cancelText}>Abbrechen</Text>
-      </Pressable>
-    </View>
-  </Modal>
+      </List>
+    </BottomSheet>
+  </Host>
+);
+
+const Swatch = ({ color }: { color: string }) => (
+  <View style={[styles.swatch, { backgroundColor: color }]} />
 );
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(28, 24, 18, 0.35)" },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.lg,
-    borderTopRightRadius: radii.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xl,
-    maxHeight: "78%",
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.text,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  list: { paddingHorizontal: spacing.lg, gap: spacing.xs },
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  swatch: { width: 34, height: 34, borderRadius: radii.pill },
-  itemText: { flex: 1 },
-  itemName: { fontSize: 17, fontWeight: "600", color: colors.text },
-  itemBotanical: { fontSize: 13, fontStyle: "italic", color: colors.textMuted },
-  cancel: { alignItems: "center", paddingTop: spacing.md },
-  cancelText: { fontSize: 16, fontWeight: "700", color: colors.accent },
+  /**
+   * Der Host spannt die ganze Fläche auf, damit das Sheet seine Breite kennt --
+   * mit Breite 0 wurde der Inhalt zusammengequetscht. `box-none` lässt Gesten
+   * durch zum Plan, solange kein Sheet offen ist.
+   */
+  host: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  swatch: { width: 30, height: 30, borderRadius: radii.pill },
 });

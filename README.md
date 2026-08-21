@@ -20,6 +20,8 @@ eine Garten.
   oder entfernen — im Alltag kann also nichts verrutschen
 - Gemeinsamer Stand auf allen Geräten, offline weiterarbeiten inklusive —
   siehe [docs/sync.md](docs/sync.md)
+- Native Bedienelemente: Jetpack Compose auf Android, SwiftUI auf iOS, im
+  Browser ein Nachbau — siehe [docs/ui.md](docs/ui.md)
 
 ## Loslegen
 
@@ -80,7 +82,7 @@ src/garden/     Datenmodell und der Garten selbst (plan.ts, species.ts)
 src/state/      Zustand, lokale Persistenz, Sync-Zyklus
 src/sync/       Sync-Datenmodell und Zusammenführen (rein, mit Tests)
 src/view/       Skia-Rendering, Viewport, Gesten
-src/ui/         Bildschirme und Bedienelemente
+src/ui/         Bildschirme und Bedienelemente (@expo/ui, siehe docs/ui.md)
 server/         Sync-Dienst: Bun, SQLite, liefert den Web-Client mit aus
 scripts/        Ableitung der Skizzendaten, Vorschau-Renderer
 docs/           Gartenmodell, Sync, Referenzskizze, Vorschaubilder

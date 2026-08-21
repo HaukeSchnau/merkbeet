@@ -1,19 +1,21 @@
-import { useEffect, useState } from "react";
 import {
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
+  BottomSheet,
+  Button,
+  FieldGroup,
+  Host,
+  Row,
+  Slider,
   Text,
   TextInput,
-  View,
-} from "react-native";
+  useNativeState,
+} from "@expo/ui";
+import { useEffect, useState } from "react";
+import { Image, StyleSheet, View } from "react-native";
 
 import { speciesOf } from "../garden/species";
 import type { Plant, PlantEdits, PlantId } from "../garden/types";
-import { formatGermanDate, parseGermanDate, todayIso } from "./dates";
 import { resolvePhotoUri } from "../sync/endpoint";
+import { formatGermanDate, parseGermanDate, todayIso } from "./dates";
 import { pickAndUploadPhoto } from "./photos";
 import { colors, radii, spacing } from "./theme";
 
@@ -32,47 +34,48 @@ export type PlantSheetProps = {
   onRemove: () => void;
 };
 
-const Row = ({ label, value }: { label: string; value: string }) => (
-  <View style={styles.row}>
-    <Text style={styles.rowLabel}>{label}</Text>
-    <Text style={styles.rowValue}>{value}</Text>
-  </View>
-);
-
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <View style={styles.field}>
-    <Text style={styles.fieldLabel}>{label}</Text>
-    {children}
-  </View>
-);
+const komma = (value: number) => value.toFixed(1).replace(".", ",");
 
 /**
- * Detailkarte einer Pflanze. Im Lesemodus reine Anzeige, im Bearbeiten-Modus
- * mit Eingabefeldern -- damit im Alltag nichts versehentlich veraendert wird.
+ * Detailkarte einer Pflanze als natives Bottom Sheet.
+ *
+ * Im Lesemodus reine Anzeige, im Bearbeiten-Modus mit Eingabefeldern -- damit
+ * im Alltag nichts versehentlich verändert wird. Die Größe ist ein Slider statt
+ * zweier Knöpfe: eine Pflanze wächst stufenlos, und auf dem Gerät ist das der
+ * Regler, den das System selbst benutzt.
  */
-export const PlantSheet = ({ plant, editMode, passcode, onClose, onEdit, onRemove }: PlantSheetProps) => {
-  const [dateDraft, setDateDraft] = useState("");
+export const PlantSheet = ({
+  plant,
+  editMode,
+  passcode,
+  onClose,
+  onEdit,
+  onRemove,
+}: PlantSheetProps) => {
+  const name = useNativeState("");
+  const notes = useNativeState("");
+  const dateDraft = useNativeState("");
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoProblem, setPhotoProblem] = useState<string | null>(null);
 
-  // Der Datumsentwurf ist lokal, weil eine halb getippte Eingabe noch kein
-  // gueltiges Datum ist und deshalb nicht gespeichert werden darf.
+  // Beim Wechsel der Pflanze die Felder nachziehen.
   useEffect(() => {
-    setDateDraft(formatGermanDate(plant?.plantedAt));
+    name.value = plant?.name ?? "";
+    notes.value = plant?.notes ?? "";
+    dateDraft.value = formatGermanDate(plant?.plantedAt);
     setPhotoProblem(null);
-  }, [plant?.id, plant?.plantedAt]);
+  }, [plant?.id, plant?.name, plant?.notes, plant?.plantedAt, name, notes, dateDraft]);
 
-  if (!plant) return null;
-  const species = speciesOf(plant.speciesId);
-  const diameter = plant.diameterMeters ?? species.defaultDiameterMeters;
+  const species = plant ? speciesOf(plant.speciesId) : null;
+  const diameter = plant && species ? (plant.diameterMeters ?? species.defaultDiameterMeters) : 1;
 
   /**
    * Das Datum braucht einen eigenen Entwurf, weil "14.0" noch kein Datum ist.
-   * Sobald die Eingabe ein gültiges Datum ergibt, wird sie sofort übernommen;
-   * beim Verlassen des Feldes wird Unsinn zurückgesetzt.
+   * Sobald die Eingabe ein gültiges Datum ergibt, wird sie übernommen.
    */
   const changeDate = (text: string) => {
-    setDateDraft(text);
+    if (!plant) return;
+    dateDraft.value = text;
     if (text.trim() === "") {
       onEdit(plant.id, { plantedAt: undefined });
       return;
@@ -81,218 +84,152 @@ export const PlantSheet = ({ plant, editMode, passcode, onClose, onEdit, onRemov
     if (iso) onEdit(plant.id, { plantedAt: iso });
   };
 
-  const commitDate = () => {
-    if (dateDraft.trim() === "") return;
-    if (!parseGermanDate(dateDraft)) setDateDraft(formatGermanDate(plant.plantedAt));
-  };
-
-  const changeDiameter = (delta: number) => {
-    onEdit(plant.id, { diameterMeters: Math.round(Math.min(6, Math.max(0.2, diameter + delta)) * 10) / 10 });
-  };
-
   return (
-    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={styles.sheet}>
-        <View style={styles.handle} />
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {plant.photoUri ? (
-            <Image source={{ uri: resolvePhotoUri(plant.photoUri) }} style={styles.photo} resizeMode="cover" />
-          ) : null}
+    <Host seedColor={colors.accent} style={styles.host} pointerEvents="box-none">
+      <BottomSheet
+        isPresented={plant !== null}
+        onDismiss={onClose}
+        snapPoints={["half", "full"]}
+        showDragIndicator
+      >
+        {plant && species ? (
+          <>
+            {plant.photoUri ? <PlantPhoto uri={resolvePhotoUri(plant.photoUri)} /> : null}
 
-          {editMode ? (
-            <Field label="Name">
-              <TextInput
-                style={styles.input}
-                defaultValue={plant.name ?? ""}
-                placeholder={species.name}
-                placeholderTextColor={colors.textMuted}
-                // Beim Tippen übernehmen: das Verschicken ist ohnehin gebündelt,
-                // und niemand soll eine Notiz verlieren, weil er die Karte
-                // zuschiebt, ohne das Feld vorher zu verlassen.
-                onChangeText={(text) => onEdit(plant.id, { name: text.trim() === "" ? undefined : text })}
-              />
-            </Field>
-          ) : (
-            <>
-              <Text style={styles.title}>{plant.name ?? species.name}</Text>
-              {species.botanical ? <Text style={styles.subtitle}>{species.botanical}</Text> : null}
-            </>
-          )}
-
-          {editMode ? (
-            <>
-              <Field label="Gepflanzt">
-                <View style={styles.inline}>
+            {editMode ? (
+              <FieldGroup style={{ width: "100%" }}>
+                <FieldGroup.Section title="Pflanze">
                   <TextInput
-                    style={[styles.input, styles.inlineInput]}
+                    value={name}
+                    placeholder={species.name}
+                    // Beim Tippen übernehmen: das Verschicken ist ohnehin
+                    // gebündelt, und niemand soll eine Notiz verlieren, weil er
+                    // die Karte zuschiebt, ohne das Feld zu verlassen.
+                    onChangeText={(text) =>
+                      onEdit(plant.id, { name: text.trim() === "" ? undefined : text })
+                    }
+                  />
+                  <TextInput
                     value={dateDraft}
-                    placeholder="TT.MM.JJJJ"
-                    placeholderTextColor={colors.textMuted}
+                    placeholder="Gepflanzt am (TT.MM.JJJJ)"
                     keyboardType="numbers-and-punctuation"
                     onChangeText={changeDate}
-                    onEndEditing={commitDate}
                   />
-                  <Pressable
-                    style={styles.secondaryButton}
+                  <TextInput
+                    value={notes}
+                    placeholder="Notizen"
+                    multiline
+                    numberOfLines={4}
+                    onChangeText={(text) =>
+                      onEdit(plant.id, { notes: text.trim() === "" ? undefined : text })
+                    }
+                  />
+                </FieldGroup.Section>
+
+                <FieldGroup.Section title={`Grösse — ${komma(diameter)} m Durchmesser`}>
+                  <Slider
+                    value={diameter}
+                    min={0.2}
+                    max={6}
+                    step={0.1}
+                    onValueChange={(value) =>
+                      onEdit(plant.id, { diameterMeters: Math.round(value * 10) / 10 })
+                    }
+                  />
+                </FieldGroup.Section>
+
+                <FieldGroup.Section>
+                  <Button
+                    variant="outlined"
+                    label="Heute als Pflanzdatum"
                     onPress={() => {
                       const iso = todayIso();
-                      setDateDraft(formatGermanDate(iso));
+                      dateDraft.value = formatGermanDate(iso);
                       onEdit(plant.id, { plantedAt: iso });
                     }}
-                  >
-                    <Text style={styles.secondaryButtonText}>Heute</Text>
-                  </Pressable>
-                </View>
-              </Field>
-
-              <Field label="Grösse (Durchmesser)">
-                <View style={styles.inline}>
-                  <Pressable style={styles.stepper} onPress={() => changeDiameter(-0.1)}>
-                    <Text style={styles.stepperText}>−</Text>
-                  </Pressable>
-                  <Text style={styles.stepperValue}>{diameter.toFixed(1).replace(".", ",")} m</Text>
-                  <Pressable style={styles.stepper} onPress={() => changeDiameter(0.1)}>
-                    <Text style={styles.stepperText}>+</Text>
-                  </Pressable>
-                </View>
-              </Field>
-
-              <Field label="Notizen">
-                <TextInput
-                  style={[styles.input, styles.multiline]}
-                  defaultValue={plant.notes ?? ""}
-                  placeholder="Standort, Pflege, Herkunft …"
-                  placeholderTextColor={colors.textMuted}
-                  multiline
-                  onChangeText={(text) => onEdit(plant.id, { notes: text.trim() === "" ? undefined : text })}
-                />
-              </Field>
-
-              <Pressable
-                style={[styles.secondaryButtonWide, (photoBusy || !passcode) && styles.buttonDisabled]}
-                disabled={photoBusy || !passcode}
-                onPress={() => {
-                  setPhotoBusy(true);
-                  setPhotoProblem(null);
-                  void pickAndUploadPhoto(passcode ?? "")
-                    .then((result) => {
-                      if (result.ok) onEdit(plant.id, { photoUri: result.photoUri });
-                      else if (result.reason === "offline")
-                        setPhotoProblem("Für ein Foto braucht Merkbeet kurz eine Verbindung.");
-                      else if (result.reason === "abgelehnt")
-                        setPhotoProblem("Dieses Bild konnte nicht gespeichert werden.");
-                    })
-                    .finally(() => setPhotoBusy(false));
-                }}
-              >
-                <Text style={styles.secondaryButtonText}>
-                  {photoBusy ? "Lädt hoch …" : plant.photoUri ? "Foto ersetzen" : "Foto hinzufügen"}
-                </Text>
-              </Pressable>
-              {photoProblem ? <Text style={styles.problem}>{photoProblem}</Text> : null}
-
-              <Pressable style={styles.dangerButton} onPress={onRemove}>
-                <Text style={styles.dangerButtonText}>Pflanze entfernen</Text>
-              </Pressable>
-            </>
-          ) : (
-            <>
-              <Row label="Gepflanzt" value={formatGermanDate(plant.plantedAt) || "nicht notiert"} />
-              <Row label="Grösse" value={`${diameter.toFixed(1).replace(".", ",")} m Durchmesser`} />
-              <Row
-                label="Position"
-                value={`${plant.position.x.toFixed(1).replace(".", ",")} m / ${plant.position.y
-                  .toFixed(1)
-                  .replace(".", ",")} m`}
-              />
-              {plant.notes ? <Text style={styles.notes}>{plant.notes}</Text> : null}
-            </>
-          )}
-        </ScrollView>
-
-        <Pressable style={styles.closeButton} onPress={onClose}>
-          <Text style={styles.closeButtonText}>Schliessen</Text>
-        </Pressable>
-      </View>
-    </Modal>
+                  />
+                  <Button
+                    variant="outlined"
+                    label={
+                      photoBusy ? "Lädt hoch …" : plant.photoUri ? "Foto ersetzen" : "Foto hinzufügen"
+                    }
+                    onPress={() => {
+                      if (photoBusy || !passcode) return;
+                      setPhotoBusy(true);
+                      setPhotoProblem(null);
+                      void pickAndUploadPhoto(passcode)
+                        .then((result) => {
+                          if (result.ok) onEdit(plant.id, { photoUri: result.photoUri });
+                          else if (result.reason === "offline")
+                            setPhotoProblem("Für ein Foto braucht Merkbeet kurz eine Verbindung.");
+                          else if (result.reason === "abgelehnt")
+                            setPhotoProblem("Dieses Bild konnte nicht gespeichert werden.");
+                        })
+                        .finally(() => setPhotoBusy(false));
+                    }}
+                  />
+                  {photoProblem ? (
+                    <Text textStyle={{ fontSize: 14, color: colors.danger }}>{photoProblem}</Text>
+                  ) : null}
+                  <Button variant="text" label="Pflanze entfernen" onPress={onRemove} />
+                </FieldGroup.Section>
+              </FieldGroup>
+            ) : (
+              <FieldGroup style={{ width: "100%" }}>
+                <FieldGroup.Section title={plant.name ?? species.name}>
+                  {species.botanical ? (
+                    <Text textStyle={{ fontSize: 14, color: colors.textMuted }}>
+                      {species.botanical}
+                    </Text>
+                  ) : null}
+                  <Detail label="Gepflanzt" value={formatGermanDate(plant.plantedAt) || "nicht notiert"} />
+                  <Detail label="Grösse" value={`${komma(diameter)} m Durchmesser`} />
+                  <Detail
+                    label="Position"
+                    value={`${komma(plant.position.x)} m / ${komma(plant.position.y)} m`}
+                  />
+                </FieldGroup.Section>
+                {plant.notes ? (
+                  <FieldGroup.Section title="Notizen">
+                    <Text textStyle={{ fontSize: 15, lineHeight: 22, color: colors.text }}>
+                      {plant.notes}
+                    </Text>
+                  </FieldGroup.Section>
+                ) : null}
+              </FieldGroup>
+            )}
+          </>
+        ) : null}
+      </BottomSheet>
+    </Host>
   );
 };
 
+const Detail = ({ label, value }: { label: string; value: string }) => (
+  <Row spacing={spacing.sm}>
+    <Text textStyle={{ fontSize: 15, color: colors.textMuted }}>{label}</Text>
+    <Text textStyle={{ fontSize: 15, fontWeight: "600", color: colors.text }}>{value}</Text>
+  </Row>
+);
+
+const PlantPhoto = ({ uri }: { uri: string }) => (
+  <View style={styles.photoWrap}>
+    <Image source={{ uri }} style={styles.photo} resizeMode="cover" />
+  </View>
+);
+
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(28, 24, 18, 0.35)" },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.lg,
-    borderTopRightRadius: radii.lg,
-    paddingBottom: spacing.xl,
-    maxHeight: "82%",
-  },
-  handle: {
-    alignSelf: "center",
-    width: 44,
-    height: 4,
-    borderRadius: radii.pill,
-    backgroundColor: colors.border,
-    marginTop: spacing.md,
-  },
-  content: { padding: spacing.lg, gap: spacing.md },
-  photo: { width: "100%", height: 180, borderRadius: radii.md, backgroundColor: colors.surfaceMuted },
-  title: { fontSize: 24, fontWeight: "700", color: colors.text },
-  subtitle: { fontSize: 14, fontStyle: "italic", color: colors.textMuted, marginTop: -spacing.sm },
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
-  rowLabel: { fontSize: 15, color: colors.textMuted },
-  rowValue: { fontSize: 15, fontWeight: "600", color: colors.text },
-  notes: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.text,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: radii.md,
-    padding: spacing.md,
-  },
-  field: { gap: spacing.xs },
-  fieldLabel: { fontSize: 13, fontWeight: "600", color: colors.textMuted },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.surface,
-  },
-  multiline: { minHeight: 88, textAlignVertical: "top" },
-  inline: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  inlineInput: { flex: 1 },
-  secondaryButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
+  /**
+   * Der Host spannt die ganze Fläche auf, damit das Sheet seine Breite kennt --
+   * mit Breite 0 wurde der Inhalt zusammengequetscht. `box-none` lässt Gesten
+   * durch zum Plan, solange kein Sheet offen ist.
+   */
+  host: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  photoWrap: { paddingHorizontal: spacing.lg },
+  photo: {
+    width: "100%",
+    height: 180,
     borderRadius: radii.md,
     backgroundColor: colors.surfaceMuted,
   },
-  secondaryButtonWide: {
-    alignItems: "center",
-    paddingVertical: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.surfaceMuted,
-  },
-  secondaryButtonText: { fontSize: 15, fontWeight: "600", color: colors.text },
-  buttonDisabled: { opacity: 0.5 },
-  problem: { fontSize: 14, color: colors.danger },
-  stepper: {
-    width: 48,
-    height: 48,
-    borderRadius: radii.md,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepperText: { fontSize: 24, fontWeight: "600", color: colors.text },
-  stepperValue: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "600", color: colors.text },
-  dangerButton: { alignItems: "center", paddingVertical: spacing.md, borderRadius: radii.md },
-  dangerButtonText: { fontSize: 15, fontWeight: "600", color: colors.danger },
-  closeButton: { alignItems: "center", paddingVertical: spacing.md },
-  closeButtonText: { fontSize: 16, fontWeight: "700", color: colors.accent },
 });

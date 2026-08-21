@@ -1,6 +1,7 @@
+import { Button, Host } from "@expo/ui";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
@@ -8,9 +9,10 @@ import type { SpeciesId } from "./src/garden/species";
 import type { Point } from "./src/garden/types";
 import { useGarden } from "./src/state/useGarden";
 import { PasscodeScreen } from "./src/ui/PasscodeScreen";
+import { SyncNotice } from "./src/ui/SyncNotice";
 import { PlantSheet } from "./src/ui/PlantSheet";
 import { SpeciesPicker } from "./src/ui/SpeciesPicker";
-import { colors, radii, spacing } from "./src/ui/theme";
+import { colors, spacing } from "./src/ui/theme";
 import { TopBar } from "./src/ui/TopBar";
 import { GardenCanvas } from "./src/view/GardenCanvas";
 
@@ -70,11 +72,10 @@ export default function App() {
           <TopBar
             editMode={editMode}
             showLabels={showLabels}
-            status={garden.status}
             onToggleEdit={toggleEdit}
             onToggleLabels={() => setShowLabels((previous) => !previous)}
-            onSyncNow={garden.syncNow}
           />
+          <SyncNotice status={garden.status} onRetry={garden.syncNow} />
 
           {garden.ready ? (
             <GardenCanvas
@@ -95,21 +96,20 @@ export default function App() {
 
           {editMode ? (
             <View style={styles.editBar}>
-              {pendingSpecies ? (
-                <>
-                  <Text style={styles.editHint}>Tippe auf die Stelle im Plan.</Text>
-                  <Pressable style={styles.editButton} onPress={() => setPendingSpecies(null)}>
-                    <Text style={styles.editButtonText}>Abbrechen</Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.editHint}>Pflanzen lassen sich jetzt verschieben.</Text>
-                  <Pressable style={styles.editButton} onPress={() => setPickerOpen(true)}>
-                    <Text style={styles.editButtonText}>+ Pflanze</Text>
-                  </Pressable>
-                </>
-              )}
+              {/* Der Fließtext bleibt im RN-Layout, damit er schrumpfen kann;
+                  matchContents würde den Host über den Rand hinaus bemessen. */}
+              <Text style={styles.editHint}>
+                {pendingSpecies
+                  ? "Tippe auf die Stelle im Plan."
+                  : "Pflanzen lassen sich jetzt verschieben."}
+              </Text>
+              <Host seedColor={colors.accent} matchContents>
+                {pendingSpecies ? (
+                  <Button variant="text" label="Abbrechen" onPress={() => setPendingSpecies(null)} />
+                ) : (
+                  <Button variant="filled" label="+ Pflanze" onPress={() => setPickerOpen(true)} />
+                )}
+              </Host>
             </View>
           ) : null}
 
@@ -141,6 +141,7 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   safeArea: { flex: 1, backgroundColor: colors.surface },
   loading: { flex: 1, alignItems: "center", justifyContent: "center" },
+  editHint: { flex: 1, fontSize: 14, color: colors.text },
   editBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -150,12 +151,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     backgroundColor: colors.accentSoft,
   },
-  editHint: { flex: 1, fontSize: 14, color: colors.text },
-  editButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: radii.pill,
-    backgroundColor: colors.accent,
-  },
-  editButtonText: { fontSize: 15, fontWeight: "700", color: colors.surface },
+
 });
