@@ -93,16 +93,20 @@ const addLeafRing = (
 
 /** Dichter, runder Strauch: außen dunkel, innen hell -- liest sich als Kuppel. */
 const drawMound = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng: Rng) => {
-  // Grundmasse, damit zwischen den Blättern kein Boden durchscheint.
+  // Grundmasse, damit zwischen den Blättern kein Boden durchscheint. Klein
+  // gehalten: die Ringe überdecken den Rand ohnehin, und jede zusätzliche
+  // Schicht wird bei starkem Zoom über viele Pixel geschrieben.
   const base = batch();
-  addCircle(base, 0, 0, radius * 0.78);
+  addCircle(base, 0, 0, radius * 0.7);
   canvas.drawPath(base.detach(), fill(palette.leafDark));
 
+  // Blattzahlen bewusst knapp: von 46 auf 35 gesenkt kostet bei starkem Zoom
+  // rund ein Viertel weniger, ohne dass die Kuppel auseinanderfällt.
   const rings: Array<{ r: number; count: number; color: string; leaf: number }> = [
-    { r: radius * 0.88, count: 16, color: palette.leafTip ?? palette.leafDark, leaf: 0.5 },
-    { r: radius * 0.64, count: 13, color: palette.leafDark, leaf: 0.48 },
-    { r: radius * 0.4, count: 10, color: palette.leafMid, leaf: 0.44 },
-    { r: radius * 0.16, count: 7, color: palette.leafLight, leaf: 0.4 },
+    { r: radius * 0.86, count: 12, color: palette.leafTip ?? palette.leafDark, leaf: 0.56 },
+    { r: radius * 0.62, count: 10, color: palette.leafDark, leaf: 0.54 },
+    { r: radius * 0.38, count: 8, color: palette.leafMid, leaf: 0.48 },
+    { r: radius * 0.14, count: 5, color: palette.leafLight, leaf: 0.44 },
   ];
   for (const ring of rings) {
     const b = batch();
@@ -114,14 +118,14 @@ const drawMound = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng:
 /** Größeres Gehölz: lockerere, größere Blattlappen und ein Stammansatz. */
 const drawCanopy = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng: Rng) => {
   const base = batch();
-  addCircle(base, 0, 0, radius * 0.7);
-  canvas.drawPath(base.detach(), fill(palette.leafDark, 0.9));
+  addCircle(base, 0, 0, radius * 0.64);
+  canvas.drawPath(base.detach(), fill(palette.leafDark));
 
   const rings: Array<{ r: number; count: number; color: string }> = [
-    { r: radius * 0.92, count: 11, color: palette.leafDark },
-    { r: radius * 0.68, count: 9, color: palette.leafMid },
-    { r: radius * 0.42, count: 7, color: palette.leafMid },
-    { r: radius * 0.2, count: 5, color: palette.leafLight },
+    { r: radius * 0.9, count: 9, color: palette.leafDark },
+    { r: radius * 0.66, count: 8, color: palette.leafMid },
+    { r: radius * 0.4, count: 6, color: palette.leafMid },
+    { r: radius * 0.18, count: 4, color: palette.leafLight },
   ];
   for (const ring of rings) {
     const b = batch();
@@ -138,7 +142,7 @@ const drawCanopy = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng
 const drawGrass = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng: Rng) => {
   const colors = [palette.leafDark, palette.leafMid, palette.leafLight];
   const groups = colors.map(() => batch());
-  for (let i = 0; i < 34; i++) {
+  for (let i = 0; i < 26; i++) {
     const angle = rng.range(0, Math.PI * 2);
     const length = rng.range(radius * 0.55, radius * 1.05);
     const bend = rng.range(-0.35, 0.35);
@@ -173,11 +177,11 @@ const drawTuft = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng: 
   canvas.drawPath(base.detach(), fill(palette.leafDark));
 
   const outer = batch();
-  addLeafRing(outer, radius * 0.62, 14, radius * 0.5, radius * 0.2, rng);
+  addLeafRing(outer, radius * 0.62, 11, radius * 0.54, radius * 0.22, rng);
   canvas.drawPath(outer.detach(), fill(palette.leafMid));
 
   const inner = batch();
-  addLeafRing(inner, radius * 0.3, 9, radius * 0.42, radius * 0.18, rng);
+  addLeafRing(inner, radius * 0.3, 7, radius * 0.44, radius * 0.2, rng);
   canvas.drawPath(inner.detach(), fill(palette.leafLight));
 };
 
@@ -301,21 +305,17 @@ const FORMS = {
 
 /**
  * Schlagschatten nach Südosten -- Licht kommt konventionell von oben links.
- * Drei gestapelte Ellipsen statt eines Weichzeichners: derselbe Eindruck,
- * ohne pro Zoomstufe neu berechnete Maske.
+ *
+ * Eine einzige Ellipse. Vorher waren es drei gestapelte für einen weichen
+ * Verlauf; bei starkem Zoom war das allein achtzig Prozent der Zeit, die die
+ * Pflanzen kosteten -- jede Ellipse ist fast so groß wie die Pflanze und wird
+ * mit Deckkraft über den Boden gemischt. Sichtbar ist ohnehin nur der Rand, der
+ * unter der Pflanze hervorschaut.
  */
 const drawShadow = (canvas: SkCanvas, radius: number) => {
-  const offsetX = radius * 0.12;
-  const offsetY = radius * 0.2;
-  for (const [spread, alpha] of [
-    [1.02, 0.08],
-    [0.92, 0.09],
-    [0.8, 0.1],
-  ] as const) {
-    const b = batch();
-    addOval(b, offsetX, offsetY, radius * 1.8 * spread, radius * 1.64 * spread, 0);
-    canvas.drawPath(b.detach(), fill("#1c2a16", alpha));
-  }
+  const b = batch();
+  addOval(b, radius * 0.15, radius * 0.24, radius * 1.82, radius * 1.66, 0);
+  canvas.drawPath(b.detach(), fill("#1c2a16", 0.17));
 };
 
 /**

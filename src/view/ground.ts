@@ -14,6 +14,7 @@ import {
 
 import { GARDEN_PLAN, SOUTH_WALL_Y, WEST_WALL_X } from "../garden/plan";
 import type { GardenArea, Point, Rect } from "../garden/types";
+import { over } from "./color";
 import { makeRng, type Rng } from "./rng";
 import { textWidth } from "./text";
 
@@ -195,9 +196,9 @@ const drawLawn = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng) => {
     const r = rng.range(0.9, 2.6);
     addOval(patches, x, y, r, r * rng.range(0.6, 0.9));
   });
-  canvas.drawPath(patches.detach(), fill(MATERIAL.lawn.shade, 0.13));
+  canvas.drawPath(patches.detach(), fill(over(MATERIAL.lawn.base, MATERIAL.lawn.shade, 0.13)));
 
-  const blade = stroke(MATERIAL.lawn.blade, 0.022, 0.55);
+  const blade = stroke(over(MATERIAL.lawn.base, MATERIAL.lawn.blade, 0.55), 0.022);
   perTile(rect, rng, (tile, count) => {
     const blades = batch();
     scatter(tile, count(2.6), rng, (x, y) => {
@@ -215,7 +216,7 @@ const drawHouse = (canvas: SkCanvas, path: SkPath, rect: Rect) => {
     for (let y = rect.y; y < rect.y + rect.height; y += 1.1) {
       addSegment(bands, rect.x, y, rect.x + rect.width, y);
     }
-    canvas.drawPath(bands.detach(), stroke(MATERIAL.house.roof, 0.06, 0.5));
+    canvas.drawPath(bands.detach(), stroke(over(MATERIAL.house.base, MATERIAL.house.roof, 0.5), 0.06));
   });
 };
 
@@ -235,8 +236,8 @@ const drawTerrace = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng) => {
         else if (roll > 0.45) dark.addRect(Skia.XYWHRect(x, y, tile, tile));
       }
     }
-    canvas.drawPath(light.detach(), fill(MATERIAL.terrace.tint, 0.4));
-    canvas.drawPath(dark.detach(), fill(MATERIAL.terrace.tint, 0.18));
+    canvas.drawPath(light.detach(), fill(over(MATERIAL.terrace.base, MATERIAL.terrace.tint, 0.4)));
+    canvas.drawPath(dark.detach(), fill(over(MATERIAL.terrace.base, MATERIAL.terrace.tint, 0.18)));
 
     const joints = batch();
     for (let x = rect.x; x <= rect.x + rect.width + 0.001; x += tile) {
@@ -245,11 +246,13 @@ const drawTerrace = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng) => {
     for (let y = rect.y; y <= rect.y + rect.height + 0.001; y += tile) {
       addSegment(joints, rect.x, y, rect.x + rect.width, y);
     }
-    canvas.drawPath(joints.detach(), stroke(MATERIAL.terrace.joint, 0.022, 0.75));
+    canvas.drawPath(joints.detach(), stroke(over(MATERIAL.terrace.base, MATERIAL.terrace.joint, 0.75), 0.022));
   }
 };
 
 const drawBed = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng, outline: Point[]) => {
+  drawWallShadow(canvas, rect.x + rect.width, rect.y + rect.height);
+
   const clodDark = fill(MATERIAL.soil.dark, 0.3);
   const clodLight = fill(MATERIAL.soil.light, 0.3);
   const gritPaint = fill(MATERIAL.soil.light, 0.4);
@@ -303,23 +306,29 @@ const drawBed = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng, outline: 
 /**
  * Schlagschatten von Haus- und Terrassenwand auf das Beet.
  *
- * Beide Bänder liegen durch die Beetgeometrie zwangsläufig innerhalb des
- * Beetes, deshalb ohne Clip -- ein L-förmiger Clip über riesige Rechtecke war
- * der zweitteuerste Posten des ganzen Untergrunds. Als Treppe aus wenigen
- * Bändern statt als Weichzeichner, das ist optisch kaum zu unterscheiden.
+ * Eine Treppe aus Bändern statt eines Weichzeichners, und deckend statt mit
+ * Deckkraft: die Bänder liegen auf der Erdgrundfarbe, also lässt sich die
+ * Abstufung vorher ausrechnen. Mit Deckkraft übereinandergelegt war das bei
+ * starkem Zoom ein spürbarer Posten, weil dieselbe Fläche fünfmal gemischt
+ * wurde.
+ *
+ * Wird vor der Textur gezeichnet -- ob Erdschollen über oder unter dem Schatten
+ * liegen, sieht man nicht.
  */
 const drawWallShadow = (canvas: SkCanvas, bedRight: number, bedBottom: number) => {
   const steps = 5;
+  const perStep = 0.05;
   for (let i = 0; i < steps; i++) {
     const depth = 0.5 * (1 - i / steps);
+    // Ein Punkt in diesem Band liegt unter i+1 Bändern; das ist die Deckung,
+    // die sich mit Alpha ergeben hätte.
+    const cumulative = 1 - (1 - perStep) ** (i + 1);
     const bands = batch();
-    // Entlang der Südwand von Terrasse und Haus.
     bands.addRect(
       Skia.XYWHRect(WEST_WALL_X, SOUTH_WALL_Y, bedRight - WEST_WALL_X, Math.min(depth, bedBottom - SOUTH_WALL_Y)),
     );
-    // Entlang der Westwand der Terrasse, in den Westarm hinein.
     bands.addRect(Skia.XYWHRect(WEST_WALL_X - depth, 0, depth, SOUTH_WALL_Y));
-    canvas.drawPath(bands.detach(), fill("#1c2a16", 0.05));
+    canvas.drawPath(bands.detach(), fill(over(MATERIAL.soil.base, "#1c2a16", cumulative)));
   }
 };
 
@@ -432,10 +441,6 @@ export const createGroundTexturePicture = (): SkPicture => {
         const path = pathOf(area);
         canvas.drawPath(path, fill(BASE_COLOR[area.kind]));
         DRAWERS[area.kind](canvas, path, boundsOf(area), makeRng(`ground:${area.id}`), area.outline);
-        if (area.kind === "bed") {
-          const r = boundsOf(area);
-          drawWallShadow(canvas, r.x + r.width, r.y + r.height);
-        }
         drawAreaEdge(canvas, area, path);
       }
       void bed;

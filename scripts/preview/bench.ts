@@ -62,37 +62,40 @@ const surface = Skia.Surface.Make(WIDTH, HEIGHT);
 if (!surface) throw new Error("Surface konnte nicht erzeugt werden");
 const canvas: SkCanvas = surface.getCanvas();
 
-const drawFrame = (scale: number, offset: number, texture: boolean, worldX = 0, worldY = 0) => {
+type Layers = { texture: boolean; ground: boolean; plants: boolean };
+
+const drawFrame = (scale: number, offset: number, layers: Layers, worldX = 0, worldY = 0) => {
   canvas.clear(Skia.Color("#8fb26e"));
   canvas.save();
   canvas.translate(-offset - worldX * scale, -offset / 2 - worldY * scale);
   canvas.scale(scale, scale);
-  canvas.drawPicture(texture ? groundTexture : groundFlat);
-  canvas.drawPicture(restingPlants);
+  if (layers.ground) canvas.drawPicture(layers.texture ? groundTexture : groundFlat);
+  if (layers.plants) canvas.drawPicture(restingPlants);
   canvas.restore();
   surface.flush();
 };
 
-const measure = (label: string, scale: number, texture: boolean, worldX = 0, worldY = 0) => {
-  drawFrame(scale, 0, texture, worldX, worldY);
+const measure = (label: string, scale: number, layers: Layers, worldX = 0, worldY = 0) => {
+  drawFrame(scale, 0, layers, worldX, worldY);
   const started = Bun.nanoseconds();
-  for (let i = 0; i < FRAMES; i++) drawFrame(scale, i * 0.5, texture, worldX, worldY);
+  for (let i = 0; i < FRAMES; i++) drawFrame(scale, i * 0.5, layers, worldX, worldY);
   const ms = (Bun.nanoseconds() - started) / 1e6 / FRAMES;
   console.log(`  ${label.padEnd(30)} ${ms.toFixed(1).padStart(7)} ms/Frame`);
 };
 
+const all = { texture: true, ground: true, plants: true };
+const onlyGround = { texture: true, ground: true, plants: false };
+const onlyPlants = { texture: false, ground: false, plants: true };
+const flat = { texture: false, ground: true, plants: true };
+
 console.log("Übersicht (34 px/m) -- ohne Textur, wie die App es zeichnet");
-measure("Basis + Pflanzen", 34, false);
-measure("(mit Textur, zum Vergleich)", 34, true);
+measure("alles flach", 34, flat);
 console.log();
-console.log("Detail (110 px/m) -- mit Textur");
-measure("Basis + Textur + Pflanzen", 110, true);
-measure("(ohne Textur, zum Vergleich)", 110, false);
-console.log();
-console.log("Prüft das Wegwerfen: Ausschnitt auf leerem Rasen weit weg");
-measure("Detail auf Rasen (16,-2)", 110, true, 16, -2.5);
-console.log();
-console.log("Textur über die Zoomstufen (Ausschnitt aufs Beet)");
-for (const scale of [44, 52, 65, 80, 100, 140]) {
-  measure(`${scale} px/m`, scale, true, 0, 0);
+
+for (const scale of [80, 140, 200]) {
+  console.log(`${scale} px/m (Ausschnitt aufs Beet)`);
+  measure("alles", scale, all);
+  measure("nur Untergrund + Textur", scale, onlyGround);
+  measure("nur Pflanzen", scale, onlyPlants);
+  console.log();
 }
