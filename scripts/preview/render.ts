@@ -6,7 +6,11 @@
  */
 import { GARDEN_PLAN } from "../../src/garden/plan";
 import { SPECIES_IDS, speciesOf } from "../../src/garden/species";
-import { createGroundPicture } from "../../src/view/ground";
+import {
+  createGroundAnnotationsPicture,
+  createGroundFlatPicture,
+  createGroundTexturePicture,
+} from "../../src/view/ground";
 import { createPlantPicture } from "../../src/view/plantArt";
 import type { SkCanvas } from "@shopify/react-native-skia";
 
@@ -43,19 +47,22 @@ const writePng = async (
 };
 
 /** Der ganze Plan von oben, wie ihn die App in der Uebersicht zeigt. */
-const renderPlan = async (pixelsPerMeter: number) => {
+const renderPlan = async (pixelsPerMeter: number, withTexture = true) => {
   const { bounds, plants } = GARDEN_PLAN;
   const width = Math.round(bounds.width * pixelsPerMeter);
   const height = Math.round(bounds.height * pixelsPerMeter);
   const worldFont = await loadFont(14);
   const labelFont = await loadFont(14);
-  const ground = createGroundPicture(worldFont);
+  const groundFlat = createGroundFlatPicture();
+  const groundTexture = createGroundTexturePicture();
+  const groundAnnotations = createGroundAnnotationsPicture(worldFont);
 
   await writePng(`plan-${pixelsPerMeter}px.png`, width, height, (canvas) => {
     canvas.save();
     canvas.scale(pixelsPerMeter, pixelsPerMeter);
     canvas.translate(-bounds.x, -bounds.y);
-    canvas.drawPicture(ground);
+    canvas.drawPicture(withTexture ? groundTexture : groundFlat);
+    canvas.drawPicture(groundAnnotations);
     for (const plant of [...plants].sort((a, b) => a.position.y - b.position.y)) {
       const species = speciesOf(plant.speciesId);
       const picture = createPlantPicture(
@@ -137,6 +144,6 @@ const renderSpeciesSheet = async () => {
   );
 };
 
-await renderPlan(40);
+await renderPlan(40, false);
 await renderPlan(110);
 await renderSpeciesSheet();

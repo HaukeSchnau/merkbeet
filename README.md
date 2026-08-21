@@ -66,6 +66,7 @@ pnpm run typecheck   # tsc --noEmit
 pnpm run test        # Merge-Konvergenz und Sync-Dienst über HTTP
 pnpm run preview     # rendert docs/preview/*.png ohne Gerät oder Emulator
 pnpm run icons       # rendert assets/*.png -- das Icon kommt aus dem Code
+pnpm run bench       # misst, was ein Frame kostet
 ```
 
 `pnpm run preview` ruft denselben Zeichencode wie die App auf, nur mit CanvasKit
@@ -101,6 +102,12 @@ Pflanze immer gleich aussieht.
 Sobald es gezeichnete Bilder gibt, wird pro Art nur der `art`-Eintrag von
 `{ kind: "procedural", … }` auf `{ kind: "asset", source: require("…png") }`
 umgestellt. Renderer und Daten bleiben unverändert.
+
+**Der Plan wird in wenigen Sammelpfaden gezeichnet, nicht Form für Form.** Was
+gleich aussieht, landet in einem Pfad und wird mit einem Aufruf gezeichnet; die
+Bodentextur kommt erst beim Hineinzoomen dazu. Warum das so ist und was es
+gebracht hat, steht in [docs/performance.md](docs/performance.md) -- wer daran
+arbeitet, sollte das vorher lesen.
 
 **Das Icon ist gezeichnet, nicht gemalt.** `pnpm run icons` rendert die
 Sternmagnolie von oben auf Beeterde — mit demselben Code, der sie im Plan

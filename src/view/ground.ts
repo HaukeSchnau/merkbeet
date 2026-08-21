@@ -1,27 +1,33 @@
 import {
-  BlurStyle,
   ClipOp,
   PaintStyle,
   Skia,
   StrokeCap,
   createPicture,
   type SkCanvas,
-  type SkPaint,
   type SkFont,
+  type SkPaint,
   type SkPath,
+  type SkPathBuilder,
   type SkPicture,
 } from "@shopify/react-native-skia";
 
 import { GARDEN_PLAN, SOUTH_WALL_Y, WEST_WALL_X } from "../garden/plan";
-import type { GardenArea, Rect } from "../garden/types";
+import type { GardenArea, Point, Rect } from "../garden/types";
 import { makeRng, type Rng } from "./rng";
 import { textWidth } from "./text";
 
 /**
  * Der Untergrund: Rasen, Haus, Terrasse und Beeterde. Alles zusammen wird
- * einmal als Skia-Picture aufgezeichnet, weil sich daran nichts aendert.
+ * einmal als Skia-Picture aufgezeichnet, weil sich daran nichts ändert.
  * Texturen sind gestreute Vektorprimitive, keine Bilddateien -- damit bleibt
  * der Plan bei jedem Zoomfaktor scharf.
+ *
+ * Wichtig für die Bildrate: gleichartige Streuung landet in **einem**
+ * Sammelpfad und wird mit einem Aufruf gezeichnet. Einzeln gezeichnet kostete
+ * derselbe Untergrund über hundert Millisekunden pro Frame, weil Skia pro
+ * Aufruf Farbe, Clip und Zustand neu aufsetzt. Weichzeichner sind aus demselben
+ * Grund vermieden: ein Maskenfilter wird bei jeder Zoomstufe neu berechnet.
  */
 
 /** Die Materialfarben des Plans. Auch das App-Icon greift darauf zu. */
@@ -52,9 +58,6 @@ const stroke = (color: string, width: number, alpha = 1): SkPaint => {
 const pathOf = (area: GardenArea): SkPath =>
   Skia.PathBuilder.Make().addPoly(area.outline, true).detach();
 
-const linePath = (x1: number, y1: number, x2: number, y2: number): SkPath =>
-  Skia.PathBuilder.Make().moveTo(x1, y1).lineTo(x2, y2).detach();
-
 const boundsOf = (area: GardenArea): Rect => {
   const xs = area.outline.map((p) => p.x);
   const ys = area.outline.map((p) => p.y);
@@ -63,7 +66,12 @@ const boundsOf = (area: GardenArea): Rect => {
   return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
 };
 
-/** Fuehrt `draw` nur innerhalb der Flaeche aus, damit Texturen nicht ueberlaufen. */
+/**
+ * Führt `draw` nur innerhalb der Fläche aus. Sparsam einsetzen: solange ein
+ * Clip-Pfad aktiv ist, prüft Skia jeden Zeichenaufruf gegen eine Maske und kann
+ * nichts mehr über einen billigen Rechteckvergleich verwerfen. Für gestreute
+ * Texturen ist `scatterInside` der bessere Weg.
+ */
 const withinArea = (canvas: SkCanvas, path: SkPath, draw: () => void) => {
   canvas.save();
   canvas.clipPath(path, ClipOp.Intersect, true);
@@ -71,114 +79,255 @@ const withinArea = (canvas: SkCanvas, path: SkPath, draw: () => void) => {
   canvas.restore();
 };
 
-/** Streut `count` Punkte gleichmaessig ueber ein Rechteck. */
-const scatter = (rect: Rect, count: number, rng: Rng, place: (x: number, y: number, i: number) => void) => {
-  for (let i = 0; i < count; i++) {
-    place(rng.range(rect.x, rect.x + rect.width), rng.range(rect.y, rect.y + rect.height), i);
+/** Strahlenschnitt-Test, ob ein Punkt im Umriss liegt. */
+const insideOutline = (x: number, y: number, outline: Point[]): boolean => {
+  let inside = false;
+  for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
+    const a = outline[i];
+    const b = outline[j];
+    if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) {
+      inside = !inside;
+    }
+  }
+  return inside;
+};
+
+/**
+ * Streut Punkte innerhalb eines Umrisses, mit Ablehnung außerhalb. So braucht
+ * das Zeichnen keinen Clip-Pfad -- der Vorteil liegt bei der Bildrate, nicht
+ * beim Aufzeichnen: Letzteres passiert nur einmal.
+ */
+const scatterInside = (
+  rect: Rect,
+  count: number,
+  rng: Rng,
+  outline: Point[],
+  place: (x: number, y: number) => void,
+  /**
+   * Halbe Ausdehnung der gestreuten Form. Ohne diesen Abstand ragen große
+   * Formen über die Kante -- der Clip, der das früher verhindert hat, ist
+   * absichtlich weg.
+   */
+  margin = 0,
+) => {
+  const fits = (x: number, y: number): boolean => {
+    if (!insideOutline(x, y, outline)) return false;
+    if (margin === 0) return true;
+    return (
+      insideOutline(x - margin, y - margin, outline) &&
+      insideOutline(x + margin, y - margin, outline) &&
+      insideOutline(x - margin, y + margin, outline) &&
+      insideOutline(x + margin, y + margin, outline)
+    );
+  };
+
+  let placed = 0;
+  // Obergrenze, damit eine schlecht getroffene Kachel die Aufzeichnung nicht anhält.
+  for (let attempt = 0; attempt < count * 8 && placed < count; attempt++) {
+    const x = rng.range(rect.x, rect.x + rect.width);
+    const y = rng.range(rect.y, rect.y + rect.height);
+    if (!fits(x, y)) continue;
+    place(x, y);
+    placed++;
   }
 };
 
+/** Streut `count` Punkte gleichmäßig über ein Rechteck. */
+const scatter = (rect: Rect, count: number, rng: Rng, place: (x: number, y: number) => void) => {
+  for (let i = 0; i < count; i++) {
+    place(rng.range(rect.x, rect.x + rect.width), rng.range(rect.y, rect.y + rect.height));
+  }
+};
+
+/**
+ * Kantenlänge einer Texturkachel in Metern. Kleiner heißt mehr Zeichenaufrufe,
+ * aber genaueres Wegwerfen beim Hineinzoomen -- und dort liegt der Engpass.
+ */
+const TILE = 2;
+
+/**
+ * Zerlegt eine Fläche in Kacheln und zeichnet jede für sich.
+ *
+ * Der Grund ist die Bildrate beim Hineinzoomen: ein einziger Pfad über den
+ * ganzen Garten wird von Skia komplett verarbeitet, auch wenn nur ein Bruchteil
+ * im Bild ist. Pro Kachel ein Pfad heißt, dass alles außerhalb des Ausschnitts
+ * mit einem billigen Rechteckvergleich wegfällt.
+ *
+ * `density` ist die Streuung pro Quadratmeter, damit alle Kacheln gleich dicht
+ * aussehen, egal wie sie am Rand angeschnitten sind.
+ */
+const perTile = (
+  rect: Rect,
+  rng: Rng,
+  draw: (tile: Rect, count: (density: number) => number) => void,
+) => {
+  for (let x = rect.x; x < rect.x + rect.width; x += TILE) {
+    for (let y = rect.y; y < rect.y + rect.height; y += TILE) {
+      const tile: Rect = {
+        x,
+        y,
+        width: Math.min(TILE, rect.x + rect.width - x),
+        height: Math.min(TILE, rect.y + rect.height - y),
+      };
+      const area = tile.width * tile.height;
+      draw(tile, (density) => Math.max(1, Math.round(area * density)));
+    }
+  }
+  void rng;
+};
+
+/** Sammelt viele gleichartige Formen in einem Pfad. */
+const batch = () => Skia.PathBuilder.Make();
+
+const addSegment = (b: SkPathBuilder, x1: number, y1: number, x2: number, y2: number) => {
+  b.moveTo(x1, y1).lineTo(x2, y2);
+};
+
+const addOval = (b: SkPathBuilder, cx: number, cy: number, rx: number, ry: number) => {
+  b.addOval(Skia.XYWHRect(cx - rx, cy - ry, rx * 2, ry * 2));
+};
+
 const drawLawn = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng) => {
-  canvas.drawPath(path, fill(MATERIAL.lawn.base));
-  withinArea(canvas, path, () => {
-    // Weiche, dunklere Flecken geben dem Rasen Tiefe.
-    scatter(rect, 26, rng, (x, y) => {
-      const r = rng.range(0.8, 2.4);
-      canvas.drawCircle(x, y, r, (() => {
-        const paint = fill(MATERIAL.lawn.shade, 0.22);
-        paint.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, r * 0.5, true));
-        return paint;
-      })());
-    });
-    const blade = stroke(MATERIAL.lawn.blade, 0.022, 0.55);
-    scatter(rect, 2600, rng, (x, y) => {
+  // Ohne Clip: der Rasen ist die unterste Schicht und deckt die ganze Fläche ab,
+  // alles Weitere wird darüber gezeichnet.
+  const patches = batch();
+  scatter(rect, 30, rng, (x, y) => {
+    const r = rng.range(0.9, 2.6);
+    addOval(patches, x, y, r, r * rng.range(0.6, 0.9));
+  });
+  canvas.drawPath(patches.detach(), fill(MATERIAL.lawn.shade, 0.13));
+
+  const blade = stroke(MATERIAL.lawn.blade, 0.022, 0.55);
+  perTile(rect, rng, (tile, count) => {
+    const blades = batch();
+    scatter(tile, count(2.6), rng, (x, y) => {
       const len = rng.range(0.05, 0.11);
-      const lean = rng.range(-0.03, 0.03);
-      canvas.drawPath(linePath(x, y, x + lean, y - len), blade);
+      addSegment(blades, x, y, x + rng.range(-0.03, 0.03), y - len);
     });
+    canvas.drawPath(blades.detach(), blade);
   });
 };
 
 const drawHouse = (canvas: SkCanvas, path: SkPath, rect: Rect) => {
-  canvas.drawPath(path, fill(MATERIAL.house.base));
   withinArea(canvas, path, () => {
-    // Angedeutetes Dach: ein paar breite Bahnen parallel zur Traufe.
-    const band = stroke(MATERIAL.house.roof, 0.06, 0.5);
+    // Angedeutetes Dach: Bahnen parallel zur Traufe, alle in einem Pfad.
+    const bands = batch();
     for (let y = rect.y; y < rect.y + rect.height; y += 1.1) {
-      canvas.drawPath(linePath(rect.x, y, rect.x + rect.width, y), band);
+      addSegment(bands, rect.x, y, rect.x + rect.width, y);
     }
+    canvas.drawPath(bands.detach(), stroke(MATERIAL.house.roof, 0.06, 0.5));
   });
-  canvas.drawPath(path, stroke(MATERIAL.house.edge, 0.09));
 };
 
 const drawTerrace = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng) => {
-  canvas.drawPath(path, fill(MATERIAL.terrace.base));
-  withinArea(canvas, path, () => {
+  // Die Terrasse ist ein Rechteck; die Plattenraster passen exakt hinein,
+  // ein Clip wäre nur Kosten.
+  {
     const tile = 0.6;
-    // Leicht unterschiedlich getoente Platten wirken lebendiger als ein Raster.
+    // Leicht getönte Platten wirken lebendiger als ein reines Raster. Zwei
+    // Helligkeitsstufen, damit es bei einem Pfad pro Stufe bleibt.
+    const light = batch();
+    const dark = batch();
     for (let x = rect.x; x < rect.x + rect.width; x += tile) {
       for (let y = rect.y; y < rect.y + rect.height; y += tile) {
-        if (rng.next() > 0.55) {
-          canvas.drawRect(
-            Skia.XYWHRect(x, y, tile, tile),
-            fill(MATERIAL.terrace.tint, rng.range(0.15, 0.45)),
-          );
-        }
+        const roll = rng.next();
+        if (roll > 0.72) light.addRect(Skia.XYWHRect(x, y, tile, tile));
+        else if (roll > 0.45) dark.addRect(Skia.XYWHRect(x, y, tile, tile));
       }
     }
-    const joint = stroke(MATERIAL.terrace.joint, 0.022, 0.75);
+    canvas.drawPath(light.detach(), fill(MATERIAL.terrace.tint, 0.4));
+    canvas.drawPath(dark.detach(), fill(MATERIAL.terrace.tint, 0.18));
+
+    const joints = batch();
     for (let x = rect.x; x <= rect.x + rect.width + 0.001; x += tile) {
-      canvas.drawPath(linePath(x, rect.y, x, rect.y + rect.height), joint);
+      addSegment(joints, x, rect.y, x, rect.y + rect.height);
     }
     for (let y = rect.y; y <= rect.y + rect.height + 0.001; y += tile) {
-      canvas.drawPath(linePath(rect.x, y, rect.x + rect.width, y), joint);
+      addSegment(joints, rect.x, y, rect.x + rect.width, y);
     }
-  });
-  canvas.drawPath(path, stroke(MATERIAL.terrace.joint, 0.06));
+    canvas.drawPath(joints.detach(), stroke(MATERIAL.terrace.joint, 0.022, 0.75));
+  }
 };
 
-const drawBed = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng) => {
-  canvas.drawPath(path, fill(MATERIAL.soil.base));
-  withinArea(canvas, path, () => {
-    // Grobe Erdschollen, danach feine Koernung und Mulchstuecke.
-    scatter(rect, 90, rng, (x, y) => {
-      canvas.drawOval(
-        Skia.XYWHRect(x, y, rng.range(0.25, 0.7), rng.range(0.18, 0.45)),
-        fill(rng.next() > 0.5 ? MATERIAL.soil.dark : MATERIAL.soil.light, 0.3),
+const drawBed = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng, outline: Point[]) => {
+  const clodDark = fill(MATERIAL.soil.dark, 0.3);
+  const clodLight = fill(MATERIAL.soil.light, 0.3);
+  const gritPaint = fill(MATERIAL.soil.light, 0.4);
+  const mulchPaint = stroke(MATERIAL.soil.mulch, 0.03, 0.5);
+
+  perTile(rect, rng, (tile, count) => {
+    const clodsDark = batch();
+    const clodsLight = batch();
+    scatterInside(
+      tile,
+      count(1.2),
+      rng,
+      outline,
+      (x, y) => {
+        const target = rng.next() > 0.5 ? clodsDark : clodsLight;
+        addOval(target, x, y, rng.range(0.12, 0.35), rng.range(0.09, 0.22));
+      },
+      0.35,
+    );
+    canvas.drawPath(clodsDark.detach(), clodDark);
+    canvas.drawPath(clodsLight.detach(), clodLight);
+
+    const grit = batch();
+    // Bewusst dünner und etwas größer: bei starkem Zoom waren die Körner ein
+    // bis drei Pixel groß, also kaum mehr als Rauschen -- kosteten aber den
+    // größten Teil der Texturzeit.
+    scatterInside(tile, count(4), rng, outline, (x, y) => {
+      const r = rng.range(0.015, 0.032);
+      addOval(grit, x, y, r, r);
+    }, 0.04);
+    canvas.drawPath(grit.detach(), gritPaint);
+
+    // Mulch als kurze dicke Striche: als Pfad billiger als gedrehte Ovale.
+    const mulch = batch();
+    scatterInside(tile, count(1.6), rng, outline, (x, y) => {
+      const angle = rng.range(0, Math.PI);
+      const half = 0.045;
+      addSegment(
+        mulch,
+        x - Math.cos(angle) * half,
+        y - Math.sin(angle) * half,
+        x + Math.cos(angle) * half,
+        y + Math.sin(angle) * half,
       );
-    });
-    scatter(rect, 1700, rng, (x, y) => {
-      canvas.drawCircle(x, y, rng.range(0.008, 0.024), fill(rng.next() > 0.5 ? MATERIAL.soil.dark : MATERIAL.soil.light, 0.55));
-    });
-    const mulch = fill(MATERIAL.soil.mulch, 0.5);
-    scatter(rect, 260, rng, (x, y) => {
-      canvas.save();
-      canvas.translate(x, y);
-      canvas.rotate(rng.range(0, 180), 0, 0);
-      canvas.drawOval(Skia.XYWHRect(-0.045, -0.014, 0.09, 0.028), mulch);
-      canvas.restore();
-    });
+    }, 0.07);
+    canvas.drawPath(mulch.detach(), mulchPaint);
   });
-  canvas.drawPath(path, stroke(MATERIAL.edging, 0.07, 0.9));
-};
-
-/** Schlagschatten von Haus- und Terrassenwand auf das Beet. */
-const drawWallShadow = (canvas: SkCanvas, bedPath: SkPath) => {
-  withinArea(canvas, bedPath, () => {
-    const paint = fill("#1c2a16", 0.16);
-    paint.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 0.22, true));
-    // Suedwand von Terrasse und Haus
-    canvas.drawRect(Skia.XYWHRect(WEST_WALL_X, SOUTH_WALL_Y, 40, 0.42), paint);
-    // Westwand der Terrasse, die in den Westarm faellt
-    canvas.drawRect(Skia.XYWHRect(WEST_WALL_X - 0.42, -1, 0.42, SOUTH_WALL_Y + 1), paint);
-  });
+  void path;
 };
 
 /**
- * Schrift in Weltkoordinaten. Die Schrift kommt in gewoehnlicher Pixelgroesse
- * und wird ueber die Matrix auf `heightMeters` verkleinert. Eine Schrift direkt
- * in Metern zu setzen funktioniert nicht: bei Groessen unter 1 vermisst Skia
- * die Glyphen falsch und laesst Buchstaben ausfallen.
+ * Schlagschatten von Haus- und Terrassenwand auf das Beet.
+ *
+ * Beide Bänder liegen durch die Beetgeometrie zwangsläufig innerhalb des
+ * Beetes, deshalb ohne Clip -- ein L-förmiger Clip über riesige Rechtecke war
+ * der zweitteuerste Posten des ganzen Untergrunds. Als Treppe aus wenigen
+ * Bändern statt als Weichzeichner, das ist optisch kaum zu unterscheiden.
+ */
+const drawWallShadow = (canvas: SkCanvas, bedRight: number, bedBottom: number) => {
+  const steps = 5;
+  for (let i = 0; i < steps; i++) {
+    const depth = 0.5 * (1 - i / steps);
+    const bands = batch();
+    // Entlang der Südwand von Terrasse und Haus.
+    bands.addRect(
+      Skia.XYWHRect(WEST_WALL_X, SOUTH_WALL_Y, bedRight - WEST_WALL_X, Math.min(depth, bedBottom - SOUTH_WALL_Y)),
+    );
+    // Entlang der Westwand der Terrasse, in den Westarm hinein.
+    bands.addRect(Skia.XYWHRect(WEST_WALL_X - depth, 0, depth, SOUTH_WALL_Y));
+    canvas.drawPath(bands.detach(), fill("#1c2a16", 0.05));
+  }
+};
+
+/**
+ * Schrift in Weltkoordinaten. Die Schrift kommt in gewöhnlicher Pixelgröße
+ * und wird über die Matrix auf `heightMeters` verkleinert. Eine Schrift direkt
+ * in Metern zu setzen funktioniert nicht: bei Größen unter 1 vermisst Skia
+ * die Glyphen falsch und lässt Buchstaben ausfallen.
  */
 const drawWorldText = (
   canvas: SkCanvas,
@@ -201,64 +350,120 @@ const drawWorldText = (
 };
 
 /**
- * Massstabsleiste auf dem Rasen: fuenf Meter in abwechselnden Segmenten. Sie
- * gehoert zum Plan und skaliert deshalb mit ihm, wie bei einer Zeichnung.
+ * Maßstabsleiste auf dem Rasen: fünf Meter in abwechselnden Segmenten. Sie
+ * gehört zum Plan und skaliert deshalb mit ihm, wie bei einer Zeichnung.
  */
 const drawScaleBar = (canvas: SkCanvas, font: SkFont, x: number, y: number) => {
   const meters = 5;
   const height = 0.16;
+  const dark = batch();
+  const light = batch();
   for (let i = 0; i < meters; i++) {
-    canvas.drawRect(
-      Skia.XYWHRect(x + i, y, 1, height),
-      fill(i % 2 === 0 ? "#3f3a33" : "#f4f1e8", 0.85),
-    );
+    (i % 2 === 0 ? dark : light).addRect(Skia.XYWHRect(x + i, y, 1, height));
   }
+  canvas.drawPath(dark.detach(), fill("#3f3a33", 0.85));
+  canvas.drawPath(light.detach(), fill("#f4f1e8", 0.85));
   canvas.drawRect(Skia.XYWHRect(x, y, meters, height), stroke("#3f3a33", 0.02, 0.85));
   const ink = fill("#3f3a33", 0.8);
   drawWorldText(canvas, font, "0", x, y - 0.1, 0.3, ink);
   drawWorldText(canvas, font, `${meters} m`, x + meters, y - 0.1, 0.3, ink, "right");
 };
 
-/** Flaechenbeschriftung, damit Haus und Terrasse auch ohne Etiketten lesbar sind. */
+/** Flächenbeschriftung, damit Haus und Terrasse auch ohne Etiketten lesbar sind. */
 const drawAreaLabel = (canvas: SkCanvas, font: SkFont, text: string, cx: number, cy: number) => {
   drawWorldText(canvas, font, text, cx, cy, 0.36, fill("#5d564c", 0.55), "center");
 };
 
-const DRAWERS: Record<GardenArea["kind"], (c: SkCanvas, p: SkPath, r: Rect, rng: Rng) => void> = {
+const BASE_COLOR: Record<GardenArea["kind"], string> = {
+  lawn: MATERIAL.lawn.base,
+  house: MATERIAL.house.base,
+  terrace: MATERIAL.terrace.base,
+  bed: MATERIAL.soil.base,
+};
+
+const DRAWERS: Record<
+  GardenArea["kind"],
+  (c: SkCanvas, p: SkPath, r: Rect, rng: Rng, outline: Point[]) => void
+> = {
   lawn: drawLawn,
   house: (c, p, r) => drawHouse(c, p, r),
   terrace: drawTerrace,
   bed: drawBed,
 };
 
+/** Umriss und Kante einer Fläche, soweit sie eine hat. */
+const drawAreaEdge = (canvas: SkCanvas, area: GardenArea, path: SkPath) => {
+  if (area.kind === "house") canvas.drawPath(path, stroke(MATERIAL.house.edge, 0.09));
+  if (area.kind === "terrace") canvas.drawPath(path, stroke(MATERIAL.terrace.joint, 0.06));
+  if (area.kind === "bed") canvas.drawPath(path, stroke(MATERIAL.edging, 0.07, 0.9));
+};
+
 /**
- * Zeichnet den kompletten Untergrund. Reihenfolge der Flaechen im Plan =
- * Zeichenreihenfolge. `font` ist eine Schrift in gewoehnlicher Pixelgroesse;
- * fehlt sie, bleiben nur die Beschriftungen weg.
+ * Der Untergrund ohne Textur: nur Flächen und Kanten. Für die Übersicht, wo
+ * der ganze Garten im Bild ist und die Textur zu klein wäre, um etwas
+ * beizutragen -- aber am meisten kosten würde.
  */
-export const createGroundPicture = (font: SkFont | null): SkPicture => {
+export const createGroundFlatPicture = (): SkPicture => {
+  const { bounds, areas } = GARDEN_PLAN;
+  return createPicture(
+    (canvas) => {
+      for (const area of areas) {
+        const path = pathOf(area);
+        canvas.drawPath(path, fill(BASE_COLOR[area.kind]));
+        drawAreaEdge(canvas, area, path);
+      }
+    },
+    Skia.XYWHRect(bounds.x, bounds.y, bounds.width, bounds.height),
+  );
+};
+
+/**
+ * Der Untergrund mit Textur. Ersetzt `createGroundFlatPicture` beim
+ * Hineinzoomen -- die beiden schließen sich aus, damit die Reihenfolge stimmt:
+ * jede Fläche deckt erst die Textur der darunterliegenden ab und trägt dann
+ * ihre eigene auf.
+ */
+export const createGroundTexturePicture = (): SkPicture => {
   const { bounds, areas } = GARDEN_PLAN;
   return createPicture(
     (canvas) => {
       const bed = areas.find((area) => area.kind === "bed");
       for (const area of areas) {
         const path = pathOf(area);
-        DRAWERS[area.kind](canvas, path, boundsOf(area), makeRng(`ground:${area.id}`));
-      }
-      if (bed) drawWallShadow(canvas, pathOf(bed));
-      if (font) {
-        const house = areas.find((area) => area.kind === "house");
-        const terrace = areas.find((area) => area.kind === "terrace");
-        if (house) {
-          const r = boundsOf(house);
-          drawAreaLabel(canvas, font, "HAUS", r.x + r.width * 0.72, r.y + r.height * 0.35);
+        canvas.drawPath(path, fill(BASE_COLOR[area.kind]));
+        DRAWERS[area.kind](canvas, path, boundsOf(area), makeRng(`ground:${area.id}`), area.outline);
+        if (area.kind === "bed") {
+          const r = boundsOf(area);
+          drawWallShadow(canvas, r.x + r.width, r.y + r.height);
         }
-        if (terrace) {
-          const r = boundsOf(terrace);
-          drawAreaLabel(canvas, font, "TERRASSE", r.x + r.width / 2, r.y + r.height / 2);
-        }
-        drawScaleBar(canvas, font, 0.4, bounds.y + bounds.height - 1.1);
+        drawAreaEdge(canvas, area, path);
       }
+      void bed;
+    },
+    Skia.XYWHRect(bounds.x, bounds.y, bounds.width, bounds.height),
+  );
+};
+
+/**
+ * Beschriftung und Maßstabsleiste. Getrennt, weil sie über beiden
+ * Untergrundvarianten liegen müssen.
+ */
+export const createGroundAnnotationsPicture = (font: SkFont | null): SkPicture => {
+  const { bounds, areas } = GARDEN_PLAN;
+  return createPicture(
+    (canvas) => {
+      if (!font) return;
+      const house = areas.find((area) => area.kind === "house");
+      const terrace = areas.find((area) => area.kind === "terrace");
+      if (house) {
+        const r = boundsOf(house);
+        drawAreaLabel(canvas, font, "HAUS", r.x + r.width * 0.72, r.y + r.height * 0.35);
+      }
+      if (terrace) {
+        const r = boundsOf(terrace);
+        drawAreaLabel(canvas, font, "TERRASSE", r.x + r.width / 2, r.y + r.height / 2);
+      }
+      drawScaleBar(canvas, font, 0.4, bounds.y + bounds.height - 1.1);
     },
     Skia.XYWHRect(bounds.x, bounds.y, bounds.width, bounds.height),
   );

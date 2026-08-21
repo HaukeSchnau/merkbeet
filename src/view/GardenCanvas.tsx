@@ -10,19 +10,31 @@ import {
   RoundedRect,
   Skia,
   Text,
+  createPicture,
   useFont,
   type SkFont,
+  type SkPicture,
 } from "@shopify/react-native-skia";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { runOnJS, useDerivedValue, useSharedValue, type SharedValue } from "react-native-reanimated";
+import {
+  runOnJS,
+  useAnimatedReaction,
+  useDerivedValue,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
 
 import { GARDEN_PLAN } from "../garden/plan";
 import { speciesOf, type Species } from "../garden/species";
 import type { Plant, PlantId, Point } from "../garden/types";
 import { colors } from "../ui/theme";
-import { createGroundPicture } from "./ground";
+import {
+  createGroundAnnotationsPicture,
+  createGroundFlatPicture,
+  createGroundTexturePicture,
+} from "./ground";
 import { createPlantPicture } from "./plantArt";
 import { textWidth } from "./text";
 import { clampTranslation, resetViewport, scaleLimits, useViewport, type Screen } from "./viewport";
@@ -31,12 +43,14 @@ import { clampTranslation, resetViewport, scaleLimits, useViewport, type Screen 
 const MIN_TOUCH_RADIUS = 24;
 
 /**
- * Ab welcher Zoomstufe (Pixel pro Meter) Etiketten sichtbar werden. In der
- * Uebersicht liegen die Pflanzen so dicht, dass sich die Namen ueberlagern
- * wuerden; dazwischen wird weich eingeblendet.
+ * Ab welcher Zoomstufe (Pixel pro Meter) Etiketten und Bodentextur gezeichnet
+ * werden. In der Übersicht überlagern sich die Namen ohnehin, und die Textur
+ * ist zu klein, um etwas beizutragen -- genau dort ist aber der ganze Garten
+ * im Bild und damit am teuersten. Die zwei Schwellen bilden eine Hysterese,
+ * damit es an der Grenze nicht flackert.
  */
-const LABEL_FADE_FROM = 45;
-const LABEL_FADE_TO = 65;
+const DETAIL_ON = 52;
+const DETAIL_OFF = 44;
 
 type HitTarget = { id: PlantId; x: number; y: number; r: number };
 
@@ -48,48 +62,16 @@ type DragState = {
 
 const diameterOf = (plant: Plant, species: Species) => plant.diameterMeters ?? species.defaultDiameterMeters;
 
-type PlantNodeProps = {
-  plant: Plant;
-  species: Species;
-  scale: SharedValue<number>;
-  drag: DragState;
-  selected: boolean;
-};
-
-/** Eine Pflanze: einmal aufgezeichnetes Bild, das nur noch verschoben wird. */
-const PlantNode = ({ plant, species, scale, drag, selected }: PlantNodeProps) => {
-  const diameter = diameterOf(plant, species);
-  const picture = useMemo(
-    () => createPlantPicture(species, diameter, plant.id),
-    [species, diameter, plant.id],
-  );
-
-  const transform = useDerivedValue(() => {
-    const dragging = drag.id.value === plant.id;
-    return [
-      { translateX: plant.position.x + (dragging ? drag.dx.value / scale.value : 0) },
-      { translateY: plant.position.y + (dragging ? drag.dy.value / scale.value : 0) },
-    ];
-  });
-  // Die Auswahlmarkierung soll auf jeder Zoomstufe gleich dick aussehen.
-  const ringWidth = useDerivedValue(() => 2.5 / scale.value);
-
-  return (
-    <Group transform={transform}>
-      <Picture picture={picture} />
-      {selected ? (
-        <Circle
-          cx={0}
-          cy={0}
-          r={diameter / 2 + 0.14}
-          color={colors.accent}
-          style="stroke"
-          strokeWidth={ringWidth}
-        />
-      ) : null}
-    </Group>
-  );
-};
+/** Bild einer Pflanze, zwischengespeichert -- es haengt nur an Art und Groesse. */
+const usePlantPictures = (plants: Plant[]): Map<PlantId, SkPicture> =>
+  useMemo(() => {
+    const pictures = new Map<PlantId, SkPicture>();
+    for (const plant of plants) {
+      const species = speciesOf(plant.speciesId);
+      pictures.set(plant.id, createPlantPicture(species, diameterOf(plant, species), plant.id));
+    }
+    return pictures;
+  }, [plants]);
 
 type PlantLabelProps = {
   plant: Plant;
@@ -187,6 +169,12 @@ export const GardenCanvas = ({
   onPlace,
 }: GardenCanvasProps) => {
   const [screen, setScreen] = useState<Screen | null>(null);
+  // Beim Hineinzoomen kommen Textur und Etiketten dazu. Als React-Zustand,
+  // damit die Knoten in der Übersicht gar nicht erst existieren.
+  const [detailed, setDetailed] = useState(false);
+  // Wer gerade geschoben wird, wird aus dem Sammelbild ausgenommen und einzeln
+  // gezeichnet. Wechselt nur bei Beginn und Ende einer Geste.
+  const [draggedId, setDraggedId] = useState<PlantId | null>(null);
   const viewport = useViewport();
   const dragId = useSharedValue<PlantId | null>(null);
   const dragDx = useSharedValue(0);
@@ -212,10 +200,53 @@ export const GardenCanvas = ({
   const fitted = useRef(false);
 
   const font = useFont(Nunito_700Bold, 14);
-  const ground = useMemo(() => createGroundPicture(font), [font]);
+  const groundFlat = useMemo(() => createGroundFlatPicture(), []);
+  const groundTexture = useMemo(() => createGroundTexturePicture(), []);
+  const groundAnnotations = useMemo(() => createGroundAnnotationsPicture(font), [font]);
+  const plantPictures = usePlantPictures(plants);
 
   // Von Nord nach Sued zeichnen, damit vordere Pflanzen die hinteren ueberdecken.
   const ordered = useMemo(() => [...plants].sort((a, b) => a.position.y - b.position.y), [plants]);
+
+  /**
+   * Alle ruhenden Pflanzen in einem einzigen Bild.
+   *
+   * Vorher war jede Pflanze ein eigener Skia-Knoten mit eigenem Derived Value.
+   * Die wurden bei jeder Zoom- und Schiebebewegung alle neu aufgezeichnet --
+   * fünfzig Knoten pro Frame, obwohl sich an den Pflanzen nichts ändert. Jetzt
+   * wird nur neu gebaut, wenn sich die Pflanzen wirklich ändern oder eine
+   * angehoben wird.
+   */
+  const restingPlants = useMemo(
+    () =>
+      createPicture((canvas) => {
+        for (const plant of ordered) {
+          if (plant.id === draggedId) continue;
+          const picture = plantPictures.get(plant.id);
+          if (!picture) continue;
+          canvas.save();
+          canvas.translate(plant.position.x, plant.position.y);
+          canvas.drawPicture(picture);
+          canvas.restore();
+        }
+      }, Skia.XYWHRect(GARDEN_PLAN.bounds.x, GARDEN_PLAN.bounds.y, GARDEN_PLAN.bounds.width, GARDEN_PLAN.bounds.height)),
+    [ordered, draggedId, plantPictures],
+  );
+
+  const draggedPlant = draggedId ? plants.find((plant) => plant.id === draggedId) ?? null : null;
+  const draggedTransform = useDerivedValue(() => {
+    const base = draggedPlant?.position ?? { x: 0, y: 0 };
+    return [
+      { translateX: base.x + drag.dx.value / viewport.scale.value },
+      { translateY: base.y + drag.dy.value / viewport.scale.value },
+    ];
+  });
+
+  const selected = selectedId ? plants.find((plant) => plant.id === selectedId) ?? null : null;
+  const selectionRadius = selected
+    ? diameterOf(selected, speciesOf(selected.speciesId)) / 2 + 0.14
+    : 0;
+  const ringWidth = useDerivedValue(() => 2.5 / viewport.scale.value);
 
   useEffect(() => {
     editing.value = editMode;
@@ -224,6 +255,17 @@ export const GardenCanvas = ({
   useEffect(() => {
     placingNow.value = placing;
   }, [placing, placingNow]);
+
+  // Nur beim Über- und Unterschreiten der Schwellen wird der Zustand gesetzt,
+  // nicht bei jedem Frame.
+  useAnimatedReaction(
+    () => viewport.scale.value,
+    (scale) => {
+      if (scale >= DETAIL_ON) runOnJS(setDetailed)(true);
+      else if (scale <= DETAIL_OFF) runOnJS(setDetailed)(false);
+    },
+    [],
+  );
 
   useEffect(() => {
     hitTargets.value = plants.map((plant) => ({
@@ -294,6 +336,7 @@ export const GardenCanvas = ({
           drag.id.value = hit.id;
           drag.dx.value = 0;
           drag.dy.value = 0;
+          runOnJS(setDraggedId)(hit.id);
         } else {
           drag.id.value = null;
           gestureStart.tx.value = viewport.tx.value;
@@ -316,15 +359,33 @@ export const GardenCanvas = ({
         const id = drag.id.value;
         if (id === null) return;
         const target = hitTargets.value.find((candidate) => candidate.id === id);
+        const dx = drag.dx.value;
+        const dy = drag.dy.value;
+        // Versatz sofort löschen: der Zustandswechsel im JS kommt einen Frame
+        // später, und bis dahin würde die Pflanze sonst um den alten Versatz
+        // neben ihrer neuen Position stehen.
         drag.id.value = null;
+        drag.dx.value = 0;
+        drag.dy.value = 0;
+        runOnJS(setDraggedId)(null);
         if (!target) return;
-        const x = target.x + drag.dx.value / viewport.scale.value;
-        const y = target.y + drag.dy.value / viewport.scale.value;
+        const x = target.x + dx / viewport.scale.value;
+        const y = target.y + dy / viewport.scale.value;
         runOnJS(commitMove)(
           id,
           Math.min(Math.max(x, bounds.x), bounds.x + bounds.width),
           Math.min(Math.max(y, bounds.y), bounds.y + bounds.height),
         );
+      })
+      // Bricht die Geste ab (zweiter Finger, Anruf), bleibt sonst eine Pflanze
+      // aus dem Sammelbild ausgenommen und schwebt am Versatz fest.
+      .onFinalize(() => {
+        "worklet";
+        if (drag.id.value === null) return;
+        drag.id.value = null;
+        drag.dx.value = 0;
+        drag.dy.value = 0;
+        runOnJS(setDraggedId)(null);
       });
 
     const pinch = Gesture.Pinch()
@@ -377,11 +438,6 @@ export const GardenCanvas = ({
     onPlace,
   ]);
 
-  // Etiketten werden erst beim Hineinzoomen eingeblendet.
-  const labelOpacity = useDerivedValue(() =>
-    Math.min(1, Math.max(0, (viewport.scale.value - LABEL_FADE_FROM) / (LABEL_FADE_TO - LABEL_FADE_FROM))),
-  );
-
   const worldTransform = useDerivedValue(() => [
     { translateX: viewport.tx.value },
     { translateY: viewport.ty.value },
@@ -394,21 +450,27 @@ export const GardenCanvas = ({
         <GestureDetector gesture={gesture}>
           <Canvas style={styles.canvas}>
             <Group transform={worldTransform}>
-              <Picture picture={ground} />
-              {ordered.map((plant) => (
-                <PlantNode
-                  key={plant.id}
-                  plant={plant}
-                  species={speciesOf(plant.speciesId)}
-                  scale={viewport.scale}
-                  drag={drag}
-                  selected={plant.id === selectedId}
+              <Picture picture={detailed ? groundTexture : groundFlat} />
+              <Picture picture={groundAnnotations} />
+              <Picture picture={restingPlants} />
+              {draggedPlant && plantPictures.get(draggedPlant.id) ? (
+                <Group transform={draggedTransform}>
+                  <Picture picture={plantPictures.get(draggedPlant.id)!} />
+                </Group>
+              ) : null}
+              {selected ? (
+                <Circle
+                  cx={selected.position.x}
+                  cy={selected.position.y}
+                  r={selectionRadius}
+                  color={colors.accent}
+                  style="stroke"
+                  strokeWidth={ringWidth}
                 />
-              ))}
+              ) : null}
             </Group>
-            {showLabels && font ? (
-              <Group opacity={labelOpacity}>
-                {ordered.map((plant) => {
+            {showLabels && detailed && font
+              ? ordered.map((plant) => {
                   const species = speciesOf(plant.speciesId);
                   return (
                     <PlantLabel
@@ -421,9 +483,8 @@ export const GardenCanvas = ({
                       drag={drag}
                     />
                   );
-                })}
-              </Group>
-            ) : null}
+                })
+              : null}
             <Compass screen={screen} font={font} />
           </Canvas>
         </GestureDetector>

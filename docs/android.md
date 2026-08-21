@@ -51,6 +51,11 @@ Native hat keine eigene Herkunft, deshalb steht die Serveradresse fest in
 `src/sync/endpoint.ts`: `https://merkbeet.schnau.dev`. Überschreibbar beim Bauen
 mit `EXPO_PUBLIC_MERKBEET_SERVER`.
 
+## Bildrate
+
+Wie der Plan gezeichnet wird, entscheidet über die Flüssigkeit -- siehe
+[performance.md](performance.md).
+
 ## Größe
 
 Die APK enthält alle vier ABIs und ist entsprechend groß. Das ist Absicht: so
