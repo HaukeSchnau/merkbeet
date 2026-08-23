@@ -17,6 +17,12 @@ pnpm dlx eas-cli@latest build --platform android --profile apk
 Das Profil `apk` in `eas.json` erzeugt bewusst eine APK und kein AAB: die Datei
 soll direkt installiert werden, nicht in den Play Store.
 
+Für Google Play gibt es daneben ein eigenes AAB-Profil:
+
+```bash
+pnpm dlx eas-cli@latest build --platform android --profile store
+```
+
 ## Signatur
 
 Der Schlüssel liegt bei EAS und wurde beim ersten Build dort erzeugt. Spätere
