@@ -1,4 +1,3 @@
-import { Button, Host } from "@expo/ui";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
@@ -9,6 +8,7 @@ import type { SpeciesId } from "./src/garden/species";
 import type { Point } from "./src/garden/types";
 import { useGarden } from "./src/state/useGarden";
 import { DiagnosticsScreen } from "./src/ui/DiagnosticsScreen";
+import { EditBar } from "./src/ui/EditBar";
 import { PasscodeScreen } from "./src/ui/PasscodeScreen";
 import { SyncNotice } from "./src/ui/SyncNotice";
 import { PlantSheet } from "./src/ui/PlantSheet";
@@ -107,42 +107,36 @@ export default function App() {
             onToggleLabels={() => setShowLabels((previous) => !previous)}
             onDiagnostics={() => setDiagnose(true)}
           />
-          <SyncNotice status={garden.status} onRetry={garden.syncNow} />
 
-          {garden.ready ? (
-            <GardenCanvas
-              plants={garden.plants}
-              showLabels={showLabels}
-              editMode={editMode}
-              placing={pendingSpecies !== null}
-              selectedId={editMode ? selectedId : null}
-              onSelect={setSelectedId}
-              onMove={garden.movePlant}
-              onPlace={place}
-            />
-          ) : (
-            <View style={styles.loading}>
-              <ActivityIndicator color={colors.accent} />
-            </View>
-          )}
+          {/* Plan und Meldung teilen sich einen Bereich: die Meldung schwebt
+              darüber, statt Platz zu beanspruchen und alles zu verschieben. */}
+          <View style={styles.planFlaeche}>
+            {garden.ready ? (
+              <GardenCanvas
+                plants={garden.plants}
+                showLabels={showLabels}
+                editMode={editMode}
+                placing={pendingSpecies !== null}
+                selectedId={editMode ? selectedId : null}
+                onSelect={setSelectedId}
+                onMove={garden.movePlant}
+                onPlace={place}
+              />
+            ) : (
+              <View style={styles.loading}>
+                <ActivityIndicator color={colors.accent} />
+              </View>
+            )}
+
+            <SyncNotice status={garden.status} onRetry={garden.syncNow} />
+          </View>
 
           {editMode ? (
-            <View style={styles.editBar}>
-              {/* Der Fließtext bleibt im RN-Layout, damit er schrumpfen kann;
-                  matchContents würde den Host über den Rand hinaus bemessen. */}
-              <Text style={styles.editHint}>
-                {pendingSpecies
-                  ? "Tippe auf die Stelle im Plan."
-                  : "Pflanzen lassen sich jetzt verschieben."}
-              </Text>
-              <Host seedColor={colors.accent} matchContents>
-                {pendingSpecies ? (
-                  <Button variant="text" label="Abbrechen" onPress={() => setPendingSpecies(null)} />
-                ) : (
-                  <Button variant="filled" label="+ Pflanze" onPress={() => setPickerOpen(true)} />
-                )}
-              </Host>
-            </View>
+            <EditBar
+              placing={pendingSpecies !== null}
+              onAdd={() => setPickerOpen(true)}
+              onCancel={() => setPendingSpecies(null)}
+            />
           ) : null}
 
           <PlantSheet
@@ -172,16 +166,7 @@ export default function App() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   safeArea: { flex: 1, backgroundColor: colors.surface },
+  planFlaeche: { flex: 1 },
   loading: { flex: 1, alignItems: "center", justifyContent: "center" },
-  editHint: { flex: 1, fontSize: 14, color: colors.text },
-  editBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.accentSoft,
-  },
 
 });

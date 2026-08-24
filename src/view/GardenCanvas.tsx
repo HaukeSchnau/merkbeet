@@ -197,6 +197,14 @@ export const GardenCanvas = ({
     ty: useSharedValue(0),
     scale: useSharedValue(1),
   };
+  /**
+   * Ausgangsposition der angehobenen Pflanze und ein Merker, dass sie abgelegt
+   * wurde. Beides als Shared Value, damit der gezogene Knoten allein aus
+   * Basis + Versatz gezeichnet wird -- unabhängig davon, wann React den neuen
+   * Stand übernimmt. Genau daran lag das kurze Zurückspringen beim Loslassen.
+   */
+  const dragBase = { x: useSharedValue(0), y: useSharedValue(0) };
+  const dropPending = useSharedValue(false);
   const fitted = useRef(false);
 
   const font = useFont(Nunito_700Bold, 14);
@@ -234,13 +242,10 @@ export const GardenCanvas = ({
   );
 
   const draggedPlant = draggedId ? plants.find((plant) => plant.id === draggedId) ?? null : null;
-  const draggedTransform = useDerivedValue(() => {
-    const base = draggedPlant?.position ?? { x: 0, y: 0 };
-    return [
-      { translateX: base.x + drag.dx.value / viewport.scale.value },
-      { translateY: base.y + drag.dy.value / viewport.scale.value },
-    ];
-  });
+  const draggedTransform = useDerivedValue(() => [
+    { translateX: dragBase.x.value + drag.dx.value / viewport.scale.value },
+    { translateY: dragBase.y.value + drag.dy.value / viewport.scale.value },
+  ]);
 
   const selected = selectedId ? plants.find((plant) => plant.id === selectedId) ?? null : null;
   const selectionRadius = selected
@@ -295,12 +300,46 @@ export const GardenCanvas = ({
     [viewport],
   );
 
+  const [abgelegt, setAbgelegt] = useState<{ id: PlantId; x: number; y: number } | null>(null);
+
+  /**
+   * Beginn einer Geste. Löscht einen noch offenen Ablage-Zustand: wer sofort
+   * weiterzieht, soll nicht mitten in der neuen Geste den Knoten verlieren,
+   * weil die vorige Ablage gerade ankommt.
+   */
+  const beginDrag = useCallback((id: PlantId) => {
+    setAbgelegt(null);
+    setDraggedId(id);
+  }, []);
+
   const commitMove = useCallback(
     (id: PlantId, x: number, y: number) => {
+      setAbgelegt({ id, x, y });
       onMove(id, { x, y });
     },
     [onMove],
   );
+
+  /**
+   * Der gezogene Knoten bleibt bestehen, bis die Pflanze im Sammelbild
+   * wirklich an ihrem neuen Platz liegt. Erst dann übernimmt das Sammelbild --
+   * beide zeichnen in diesem Moment denselben Punkt, deshalb ist der Wechsel
+   * unsichtbar.
+   */
+  useEffect(() => {
+    if (!abgelegt) return;
+    const plant = plants.find((kandidat) => kandidat.id === abgelegt.id);
+    const angekommen =
+      !plant ||
+      (Math.abs(plant.position.x - abgelegt.x) < 1e-6 &&
+        Math.abs(plant.position.y - abgelegt.y) < 1e-6);
+    if (!angekommen) return;
+    dropPending.value = false;
+    drag.dx.value = 0;
+    drag.dy.value = 0;
+    setAbgelegt(null);
+    setDraggedId(null);
+  }, [abgelegt, plants, drag.dx, drag.dy, dropPending]);
 
   const gesture = useMemo(() => {
     if (!screen) return Gesture.Tap();
@@ -339,7 +378,10 @@ export const GardenCanvas = ({
           drag.id.value = hit.id;
           drag.dx.value = 0;
           drag.dy.value = 0;
-          runOnJS(setDraggedId)(hit.id);
+          dragBase.x.value = hit.x;
+          dragBase.y.value = hit.y;
+          dropPending.value = false;
+          runOnJS(beginDrag)(hit.id);
         } else {
           drag.id.value = null;
           gestureStart.tx.value = viewport.tx.value;
@@ -361,30 +403,30 @@ export const GardenCanvas = ({
         "worklet";
         const id = drag.id.value;
         if (id === null) return;
-        const target = hitTargets.value.find((candidate) => candidate.id === id);
-        const dx = drag.dx.value;
-        const dy = drag.dy.value;
-        // Versatz sofort löschen: der Zustandswechsel im JS kommt einen Frame
-        // später, und bis dahin würde die Pflanze sonst um den alten Versatz
-        // neben ihrer neuen Position stehen.
         drag.id.value = null;
-        drag.dx.value = 0;
-        drag.dy.value = 0;
-        runOnJS(setDraggedId)(null);
-        if (!target) return;
-        const x = target.x + dx / viewport.scale.value;
-        const y = target.y + dy / viewport.scale.value;
-        runOnJS(commitMove)(
-          id,
-          Math.min(Math.max(x, bounds.x), bounds.x + bounds.width),
-          Math.min(Math.max(y, bounds.y), bounds.y + bounds.height),
-        );
+
+        const x = dragBase.x.value + drag.dx.value / viewport.scale.value;
+        const y = dragBase.y.value + drag.dy.value / viewport.scale.value;
+        const zielX = Math.min(Math.max(x, bounds.x), bounds.x + bounds.width);
+        const zielY = Math.min(Math.max(y, bounds.y), bounds.y + bounds.height);
+
+        // Den Versatz genau auf den abgelegten Punkt setzen, statt ihn zu
+        // löschen. Bis der neue Stand ankommt, zeichnet der Knoten damit
+        // weiter exakt dort, wo der Finger losgelassen hat -- auch wenn der
+        // Punkt am Rand abgeschnitten wurde.
+        drag.dx.value = (zielX - dragBase.x.value) * viewport.scale.value;
+        drag.dy.value = (zielY - dragBase.y.value) * viewport.scale.value;
+        dropPending.value = true;
+
+        runOnJS(commitMove)(id, zielX, zielY);
       })
       // Bricht die Geste ab (zweiter Finger, Anruf), bleibt sonst eine Pflanze
-      // aus dem Sammelbild ausgenommen und schwebt am Versatz fest.
+      // aus dem Sammelbild ausgenommen und schwebt am Versatz fest. Nach einem
+      // regulären Ablegen läuft onFinalize ebenfalls -- dann nichts tun, sonst
+      // wäre das Zurückspringen wieder da.
       .onFinalize(() => {
         "worklet";
-        if (drag.id.value === null) return;
+        if (dropPending.value || drag.id.value === null) return;
         drag.id.value = null;
         drag.dx.value = 0;
         drag.dy.value = 0;
@@ -430,6 +472,9 @@ export const GardenCanvas = ({
     screen,
     viewport,
     drag,
+    dragBase.x,
+    dragBase.y,
+    dropPending,
     gestureStart.tx,
     gestureStart.ty,
     gestureStart.scale,
@@ -437,6 +482,7 @@ export const GardenCanvas = ({
     editing,
     placingNow,
     commitMove,
+    beginDrag,
     onSelect,
     onPlace,
   ]);
