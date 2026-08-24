@@ -1,5 +1,5 @@
 import { Button, Host, Row, Switch } from "@expo/ui";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, spacing } from "./theme";
 
@@ -8,6 +8,8 @@ export type TopBarProps = {
   showLabels: boolean;
   onToggleEdit: () => void;
   onToggleLabels: () => void;
+  /** Langes Drücken auf den Titel öffnet die Diagnose. */
+  onDiagnostics: () => void;
 };
 
 /**
@@ -16,9 +18,22 @@ export type TopBarProps = {
  * Etiketten ist ein echter Schalter statt eines nachgebauten Knopfes -- das
  * fühlt sich auf dem Gerät nach System an und nicht nach Website.
  */
-export const TopBar = ({ editMode, showLabels, onToggleEdit, onToggleLabels }: TopBarProps) => (
+export const TopBar = ({
+  editMode,
+  showLabels,
+  onToggleEdit,
+  onToggleLabels,
+  onDiagnostics,
+}: TopBarProps) => (
   <View style={styles.bar}>
-    <Text style={styles.title}>Merkbeet</Text>
+    {/*
+      Auf dem Gerät gibt es keine Adresszeile, über die man ?diag=1 aufrufen
+      könnte. Langes Drücken auf den Titel ist der Ersatz -- versteckt genug,
+      dass niemand versehentlich hineinrutscht.
+    */}
+    <Pressable onLongPress={onDiagnostics} delayLongPress={1200}>
+      <Text style={styles.title}>Merkbeet</Text>
+    </Pressable>
     <Host seedColor={colors.accent} matchContents>
       <Row spacing={spacing.md} alignment="center">
         <Switch value={showLabels} onValueChange={onToggleLabels} label="Etiketten" />

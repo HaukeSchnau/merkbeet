@@ -35,6 +35,9 @@ export default function App() {
   const [pickerOpen, setPickerOpen] = useState(false);
   // Ist eine Art gewaehlt, wartet die App auf den Tipp an die Zielstelle.
   const [pendingSpecies, setPendingSpecies] = useState<SpeciesId | null>(null);
+  // Auf dem Gerät über langes Drücken auf den Titel erreichbar, im Browser
+  // zusätzlich über ?diag=1.
+  const [diagnose, setDiagnose] = useState(false);
 
   const selected = useMemo(
     () => garden.plants.find((plant) => plant.id === selectedId) ?? null,
@@ -62,7 +65,7 @@ export default function App() {
     setSelectedId(null);
   }, [garden, selectedId]);
 
-  if (diagnoseGewuenscht()) {
+  if (diagnose || diagnoseGewuenscht()) {
     return (
       <SafeAreaProvider>
         <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
@@ -96,6 +99,7 @@ export default function App() {
             showLabels={showLabels}
             onToggleEdit={toggleEdit}
             onToggleLabels={() => setShowLabels((previous) => !previous)}
+            onDiagnostics={() => setDiagnose(true)}
           />
           <SyncNotice status={garden.status} onRetry={garden.syncNow} />
 

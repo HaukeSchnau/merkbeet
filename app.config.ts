@@ -57,6 +57,17 @@ const config: ExpoConfig = {
     ],
   ],
   experiments: { baseUrl },
+  /**
+   * Updates über die Luft. Der TestFlight-Build vom 24.08.2026 hatte diese
+   * Laufzeit noch nicht -- deshalb war für den iOS-Fix ein neuer Build nötig.
+   * Ab diesem Build gehen Korrekturen, die nur JavaScript betreffen, per
+   * `eas update` raus, ohne dass jemand etwas neu installieren muss.
+   */
+  updates: { url: "https://u.expo.dev/eb958701-9c64-40a0-bd2a-36e643e022f2" },
+  // Fingerprint statt Versionsnummer: ein Update erreicht nur Builds, deren
+  // native Seite dazu passt. Sonst landet neuer JS-Code in einem Binary, dem
+  // ein Modul fehlt.
+  runtimeVersion: { policy: "fingerprint" },
   // Von 'eas init' angelegt; die dynamische Config kann EAS nicht selbst schreiben.
   extra: { eas: { projectId: "eb958701-9c64-40a0-bd2a-36e643e022f2" } },
 };
