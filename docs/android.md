@@ -38,6 +38,23 @@ ausgeführt. Das Skript emuliert denselben Compiler über qemu, statt einen
 anderen einzusetzen -- die Bytecode-Version muss zur App passen. Nach jedem
 `pnpm install` erneut nötig.
 
+## Google Play
+
+Die Eltern bekommen die App über den **internen Test**. `eas.json` legt
+`submit.store.android.track = "internal"` fest -- ohne das reicht EAS in die
+Produktion ein.
+
+```bash
+pnpm dlx eas-cli@latest build --platform android --profile store
+pnpm dlx eas-cli@latest submit --platform android --profile store --id <build>
+```
+
+Der zweite Schritt braucht einen Google-Service-Account-Schlüssel in den
+EAS-Credentials. Solange der fehlt, muss das Bundle von Hand ins Play Console
+geladen werden (Internal testing → Create new release). Einmal eingerichtet
+über `eas credentials` (Android → Google Service Account), danach läuft die
+Einreichung mit.
+
 ## Signatur
 
 Der Schlüssel liegt bei EAS und wurde beim ersten Build dort erzeugt. Spätere
