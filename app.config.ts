@@ -18,6 +18,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: "dev.schnau.merkbeet",
+    config: { usesNonExemptEncryption: false },
   },
   android: {
     adaptiveIcon: {
