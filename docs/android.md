@@ -46,14 +46,23 @@ Produktion ein.
 
 ```bash
 pnpm dlx eas-cli@latest build --platform android --profile store
-pnpm dlx eas-cli@latest submit --platform android --profile store --id <build>
+google-play-internal-release \
+  dev.schnau.merkbeet \
+  /pfad/zum/build.aab \
+  '1.0.0 (<versionCode>)' \
+  'Kurze deutsche Versionshinweise.'
 ```
 
-Der zweite Schritt braucht einen Google-Service-Account-Schlüssel in den
-EAS-Credentials. Solange der fehlt, muss das Bundle von Hand ins Play Console
-geladen werden (Internal testing → Create new release). Einmal eingerichtet
-über `eas credentials` (Android → Google Service Account), danach läuft die
-Einreichung mit.
+`google-play-internal-release` ist auf `srv-2` installiert und benutzt dort das
+dauerhaft hinterlegte Urbs-Service-Konto. Der Befehl kann ausschließlich in den
+internen Test einreichen, prüft die Änderung vor dem Veröffentlichen und liest
+den fertigen Track anschließend noch einmal zurück. Weder das MacBook noch ein
+manueller Upload im Play Console sind dafür nötig.
+
+`eas submit` bleibt als Alternative möglich, würde den Service-Account-Schlüssel
+aber zusätzlich in den projektspezifischen EAS-Credentials brauchen. Der
+Host-Befehl teilt dieselbe Play-Berechtigung dagegen mit künftigen Urbs-Apps und
+ist deshalb der Standardweg.
 
 ## Signatur
 
