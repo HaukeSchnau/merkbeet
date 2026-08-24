@@ -23,6 +23,21 @@ Für Google Play gibt es daneben ein eigenes AAB-Profil:
 pnpm dlx eas-cli@latest build --platform android --profile store
 ```
 
+## Updates über die Luft
+
+Seit dem Build vom 24.08.2026 ist `expo-updates` mit Fingerprint-Policy dabei.
+Korrekturen, die nur JavaScript betreffen, gehen ohne neuen Build raus:
+
+```bash
+CI=1 pnpm dlx eas-cli@latest update --channel store --environment production -m "..."
+```
+
+Auf srv-2 (aarch64) muss vorher einmal `scripts/hermesc-arm-wrapper.sh` laufen:
+der von Expo mitgelieferte Hermes-Compiler ist x86_64 und wird sonst nicht
+ausgeführt. Das Skript emuliert denselben Compiler über qemu, statt einen
+anderen einzusetzen -- die Bytecode-Version muss zur App passen. Nach jedem
+`pnpm install` erneut nötig.
+
 ## Signatur
 
 Der Schlüssel liegt bei EAS und wurde beim ersten Build dort erzeugt. Spätere
