@@ -1,11 +1,12 @@
 # Merkbeet
 
-Eine kleine App für ein einzelnes Blumenbeet: der Garten meiner Eltern von
-oben, mit jeder Pflanze an ihrer echten Stelle. Der Zweck ist, sich zu merken,
-wo etwas steht — besonders bei frisch Gepflanztem, das man noch nicht sieht.
+Eine Gartenkarte für ein einzelnes, vermessenes Grundstück. Merkbeet zeigt
+Beete und Pflanzen an ihren tatsächlichen Positionen und hält Änderungen über
+mehrere Geräte hinweg synchron.
 
-Bewusst keine allgemeine Gartenplanungs-App: die Geometrie ist genau dieser
-eine Garten.
+Die App ist bewusst kein allgemeiner Gartenplaner. Sie ist auf einen konkreten
+Plan zugeschnitten und dient vor allem als Beispiel dafür, wie sich räumliche
+Daten mit React Native Skia darstellen und bearbeiten lassen.
 
 ![Der Plan](docs/preview/plan-110px.png)
 
@@ -37,21 +38,10 @@ steht in [docs/android.md](docs/android.md).
 Die Web-Variante läuft ebenfalls vollständig — Skia kommt dort als CanvasKit
 (WebAssembly) und braucht WebGL, das jeder aktuelle Handy-Browser hat.
 
-## Wo es läuft
+## Deployment
 
-**<https://merkbeet.schnau.dev>** — öffentlich erreichbar, weil die Geräte
-meiner Eltern nicht im Tailnet sind. Geschützt durch einen gemeinsamen
-Zugangscode; der Code steht in `secrets/secrets.yaml` in `~/infra` unter
-`projects/merkbeet/passcode`.
-
-Der Dienst ist als `projects.merkbeet` in `~/infra` deklariert. Ein Deployment
-holt den Stand von `main` aus der Gitea:
-
-```bash
-pnpm run typecheck && pnpm run test   # vorher
-jj-push main                          # dann
-cd ~/infra && nix flake lock --update-input merkbeet && just deploy-host srv-2
-```
+Die Web-App läuft unter **<https://merkbeet.schnau.dev>**. Ein gemeinsamer
+Zugangscode schützt die synchronisierten Daten.
 
 Lokal:
 
@@ -60,7 +50,6 @@ pnpm install
 pnpm run setup:web    # legt canvaskit.wasm in public/ ab (nicht im Repo)
 pnpm run web          # Dev-Server
 pnpm run server       # Sync-Dienst, braucht MERKBEET_PASSCODE
-pnpm run deploy:preview   # Vorschau ins Tailnet, gegen den echten Dienst
 ```
 
 ```bash
@@ -125,8 +114,7 @@ selben Strauch arbeiten, ohne sich zu überschreiben.
 
 ![Die Arten](docs/preview/species.png)
 
-## Wie die Skizze zu Daten wurde
+## Gartenmodell
 
-Siehe [docs/garden-model.md](docs/garden-model.md) — dort steht, welche Maße
-gemessen und welche geschätzt sind, und was noch bei den Eltern nachzufragen
-ist.
+In [docs/garden-model.md](docs/garden-model.md) steht, wie Maße, Schätzwerte und
+Pflanzenpositionen im Datenmodell abgebildet sind.
