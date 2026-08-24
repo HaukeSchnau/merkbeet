@@ -58,7 +58,7 @@
             pname = "merkbeet-pnpm-dependencies";
             inherit pnpm src version;
             fetcherVersion = 4;
-            hash = "sha256-sfF7iDuxFeU3io6krVtCveDFC+yPvsWBkRYLEPT+4gI=";
+            hash = "sha256-v4iz6WPjkP3UZcgCRDShwDjB6obQb2TRkRupZpzJFJo=";
           };
 
           # Der Web-Client als statischer Export. Läuft unter dem Basispfad /,

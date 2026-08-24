@@ -130,6 +130,25 @@ const server = Bun.serve({
       return json({ photoUri: path });
     }
 
+    // Diagnoseberichte von Geräten, an die ich nicht herankomme. Ohne
+    // Zugangscode, weil der Bildschirm vor dem Anmelden erreichbar sein muss;
+    // dafür klein begrenzt und ohne Auswirkung auf den Gartenstand.
+    if (pathname === "/api/diag" && request.method === "POST") {
+      const text = await request.text();
+      if (text.length > 32 * 1024) return json({ error: "Bericht zu groß" }, 413);
+      const zeile = JSON.stringify({
+        at: new Date().toISOString(),
+        from: clientKey(request),
+        agent: request.headers.get("user-agent"),
+        report: text.slice(0, 32 * 1024),
+      });
+      await Bun.write(
+        Bun.file(`${config.stateDir}/diagnose.jsonl`),
+        (await Bun.file(`${config.stateDir}/diagnose.jsonl`).text().catch(() => "")) + zeile + "\n",
+      );
+      return json({ ok: true });
+    }
+
     if (pathname.startsWith("/api/")) return json({ error: "unbekannter Endpunkt" }, 404);
     if (request.method !== "GET") return new Response("nur GET", { status: 405 });
 

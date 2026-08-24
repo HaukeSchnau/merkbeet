@@ -28,8 +28,11 @@
         overflow: hidden;
         margin: 0;
         background-color: #fffdf8;
-        /* Gesten gehoeren dem Plan; kein Wischen und kein Ueberdehnen der Seite. */
-        touch-action: none;
+        /*
+          Kein touch-action hier. Gesture Handler setzt das auf seiner eigenen
+          Flaeche, und auf dem body ist es ein bekannter WebKit-Fallstrick:
+          iOS Safari kann dann Taps und Klicks im ganzen Dokument verschlucken.
+        */
         overscroll-behavior: none;
         -webkit-text-size-adjust: 100%;
       }

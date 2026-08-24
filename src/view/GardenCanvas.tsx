@@ -16,7 +16,7 @@ import {
   type SkPicture,
 } from "@shopify/react-native-skia";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
+import { Platform, StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import {
   runOnJS,
@@ -256,13 +256,16 @@ export const GardenCanvas = ({
     placingNow.value = placing;
   }, [placing, placingNow]);
 
-  // Nur beim Über- und Unterschreiten der Schwellen wird der Zustand gesetzt,
-  // nicht bei jedem Frame.
+  // Nur beim Über- und Unterschreiten der Schwellen in den JS-Thread springen.
+  // Ohne den Merker liefe pro Frame einer Zoomgeste ein runOnJS mit.
+  const detailGemeldet = useSharedValue(false);
   useAnimatedReaction(
     () => viewport.scale.value,
     (scale) => {
-      if (scale >= DETAIL_ON) runOnJS(setDetailed)(true);
-      else if (scale <= DETAIL_OFF) runOnJS(setDetailed)(false);
+      const soll = detailGemeldet.value ? scale > DETAIL_OFF : scale >= DETAIL_ON;
+      if (soll === detailGemeldet.value) return;
+      detailGemeldet.value = soll;
+      runOnJS(setDetailed)(soll);
     },
     [],
   );
@@ -494,6 +497,12 @@ export const GardenCanvas = ({
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.canvasBackground },
+  container: {
+    flex: 1,
+    backgroundColor: colors.canvasBackground,
+    // Nur hier braucht der Browser die Zusage, dass Wischen und Zoomen dem
+    // Plan gehoeren -- global auf dem body war es ein WebKit-Fallstrick.
+    ...Platform.select({ web: { touchAction: "none" as const }, default: {} }),
+  },
   canvas: { flex: 1 },
 });

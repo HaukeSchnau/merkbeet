@@ -42,7 +42,8 @@
     "test": "bun test",
     "setup:web": "pnpm exec setup-skia-web public",
     "icons": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/icons.ts",
-    "bench": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/bench.ts"
+    "bench": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/bench.ts",
+    "check": "pnpm run typecheck && bun test && nix flake check"
   },
   "private": true,
   "trustedDependencies": [

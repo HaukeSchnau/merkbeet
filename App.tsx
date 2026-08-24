@@ -8,6 +8,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import type { SpeciesId } from "./src/garden/species";
 import type { Point } from "./src/garden/types";
 import { useGarden } from "./src/state/useGarden";
+import { DiagnosticsScreen } from "./src/ui/DiagnosticsScreen";
 import { PasscodeScreen } from "./src/ui/PasscodeScreen";
 import { SyncNotice } from "./src/ui/SyncNotice";
 import { PlantSheet } from "./src/ui/PlantSheet";
@@ -15,6 +16,16 @@ import { SpeciesPicker } from "./src/ui/SpeciesPicker";
 import { colors, spacing } from "./src/ui/theme";
 import { TopBar } from "./src/ui/TopBar";
 import { GardenCanvas } from "./src/view/GardenCanvas";
+
+/**
+ * `?diag=1` zeigt statt des Gartens einen Diagnosebildschirm. Für Geräte, an die
+ * ich nicht herankomme -- er läuft ohne Skia und ohne native Bedienelemente und
+ * grenzt damit ein, welche Schicht klemmt.
+ */
+const diagnoseGewuenscht = (): boolean => {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).has("diag");
+};
 
 export default function App() {
   const garden = useGarden();
@@ -50,6 +61,17 @@ export default function App() {
     garden.removePlant(selectedId);
     setSelectedId(null);
   }, [garden, selectedId]);
+
+  if (diagnoseGewuenscht()) {
+    return (
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
+          <StatusBar style="dark" />
+          <DiagnosticsScreen />
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
 
   if (garden.ready && !garden.passcode) {
     return (

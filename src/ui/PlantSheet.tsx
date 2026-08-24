@@ -69,6 +69,9 @@ export const PlantSheet = ({
   const species = plant ? speciesOf(plant.speciesId) : null;
   const diameter = plant && species ? (plant.diameterMeters ?? species.defaultDiameterMeters) : 1;
 
+  // Die Hooks stehen alle oben, damit der frühe Ausstieg unten die Reihenfolge
+  // nicht verändert.
+
   /**
    * Das Datum braucht einen eigenen Entwurf, weil "14.0" noch kein Datum ist.
    * Sobald die Eingabe ein gültiges Datum ergibt, wird sie übernommen.
@@ -84,15 +87,15 @@ export const PlantSheet = ({
     if (iso) onEdit(plant.id, { plantedAt: iso });
   };
 
+  // Nur einhängen, wenn wirklich eine Pflanze offen ist. Ein dauerhaft
+  // eingehängter, bildschirmfüllender Host verschluckt sonst jede Berührung --
+  // auf iOS Safari war damit nach dem Anmelden die ganze App tot.
+  if (!plant || !species) return null;
+
   return (
-    <Host seedColor={colors.accent} style={styles.host} pointerEvents="box-none">
-      <BottomSheet
-        isPresented={plant !== null}
-        onDismiss={onClose}
-        snapPoints={["half", "full"]}
-        showDragIndicator
-      >
-        {plant && species ? (
+    <Host seedColor={colors.accent} style={styles.host}>
+      <BottomSheet isPresented onDismiss={onClose} snapPoints={["half", "full"]} showDragIndicator>
+        {(
           <>
             {plant.photoUri ? <PlantPhoto uri={resolvePhotoUri(plant.photoUri)} /> : null}
 
@@ -199,7 +202,7 @@ export const PlantSheet = ({
               </FieldGroup>
             )}
           </>
-        ) : null}
+        )}
       </BottomSheet>
     </Host>
   );
@@ -221,8 +224,8 @@ const PlantPhoto = ({ uri }: { uri: string }) => (
 const styles = StyleSheet.create({
   /**
    * Der Host spannt die ganze Fläche auf, damit das Sheet seine Breite kennt --
-   * mit Breite 0 wurde der Inhalt zusammengequetscht. `box-none` lässt Gesten
-   * durch zum Plan, solange kein Sheet offen ist.
+   * mit Breite 0 wurde der Inhalt zusammengequetscht. Er wird nur eingehängt,
+   * solange eine Pflanze offen ist, sonst würde er alle Berührungen abfangen.
    */
   host: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   photoWrap: { paddingHorizontal: spacing.lg },
