@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { SERVER_BASE } from "../sync/endpoint";
 import { SkiaProbe, type SkiaProbeResult } from "./SkiaProbe";
@@ -19,7 +19,7 @@ import { colors, radii, spacing } from "./theme";
 type Befund = { name: string; wert: string };
 
 const webglBefunde = (): Befund[] => {
-  if (typeof document === "undefined") return [{ name: "WebGL", wert: "nicht im Browser" }];
+  if (Platform.OS !== "web") return [{ name: "WebGL", wert: "nur im Browser messbar" }];
   const befunde: Befund[] = [];
 
   const versuch = (art: "webgl" | "webgl2", offscreen: boolean): string => {
@@ -55,28 +55,33 @@ const webglBefunde = (): Befund[] => {
 };
 
 const umgebung = (): Befund[] => {
-  const nav = typeof navigator === "undefined" ? null : navigator;
-  const win = typeof window === "undefined" ? null : window;
+  const nav = Platform.OS === "web" ? navigator : null;
+  const fenster = Dimensions.get("window");
   return [
-    { name: "Plattform", wert: Platform.OS },
-    { name: "User-Agent", wert: nav?.userAgent?.slice(0, 160) ?? "unbekannt" },
-    { name: "Bildschirm", wert: win ? `${win.innerWidth}x${win.innerHeight} @${win.devicePixelRatio}` : "?" },
+    { name: "Plattform", wert: `${Platform.OS} ${String(Platform.Version ?? "")}`.trim() },
+    { name: "User-Agent", wert: nav?.userAgent?.slice(0, 160) ?? "nativ" },
+    {
+      name: "Bildschirm",
+      wert: `${Math.round(fenster.width)}x${Math.round(fenster.height)} @${fenster.scale}`,
+    },
     {
       name: "Vom Startbildschirm",
-      wert: String(
-        (nav as { standalone?: boolean } | null)?.standalone ??
-          win?.matchMedia?.("(display-mode: standalone)").matches ??
-          "?",
-      ),
+      wert:
+        Platform.OS === "web"
+          ? String((nav as { standalone?: boolean } | null)?.standalone ?? "?")
+          : "nativ",
     },
     { name: "Kerne", wert: String((nav as { hardwareConcurrency?: number } | null)?.hardwareConcurrency ?? "?") },
-    { name: "AbortSignal.timeout", wert: String(typeof AbortSignal?.timeout) },
+    {
+      name: "AbortSignal.timeout",
+      wert: String(typeof (globalThis as { AbortSignal?: { timeout?: unknown } }).AbortSignal?.timeout),
+    },
   ];
 };
 
 /** Wie lange braucht ein einfacher Füllvorgang? Grobes Maß für die Grafikleistung. */
 const zeichenprobe = (): Befund[] => {
-  if (typeof document === "undefined") return [];
+  if (Platform.OS !== "web") return [];
   try {
     const leinwand = document.createElement("canvas");
     leinwand.width = 780;
@@ -114,7 +119,7 @@ export const DiagnosticsScreen = () => {
   }, []);
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
+    if (Platform.OS !== "web") return;
     const zaehle = (art: keyof typeof roh) => () =>
       setRoh((vorher) => ({ ...vorher, [art]: vorher[art] + 1 }));
     const listener: Array<[string, () => void]> = [

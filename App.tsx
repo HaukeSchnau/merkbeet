@@ -1,7 +1,7 @@
 import { Button, Host } from "@expo/ui";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
@@ -20,11 +20,17 @@ import { GardenCanvas } from "./src/view/GardenCanvas";
 /**
  * `?diag=1` zeigt statt des Gartens einen Diagnosebildschirm. Für Geräte, an die
  * ich nicht herankomme -- er läuft ohne Skia und ohne native Bedienelemente und
- * grenzt damit ein, welche Schicht klemmt.
+ * grenzt damit ein, welche Schicht klemmt. Auf dem Gerät führt langes Drücken
+ * auf den Titel dorthin.
+ *
+ * Die Plattform wird über `Platform.OS` geprüft, nicht über `typeof window`:
+ * React Native definiert `window` durchaus, aber `window.location` nicht --
+ * dieser Zugriff hat die App beim Start abgeschossen.
  */
 const diagnoseGewuenscht = (): boolean => {
-  if (typeof window === "undefined") return false;
-  return new URLSearchParams(window.location.search).has("diag");
+  if (Platform.OS !== "web") return false;
+  const suche = globalThis.location?.search;
+  return typeof suche === "string" && new URLSearchParams(suche).has("diag");
 };
 
 export default function App() {
