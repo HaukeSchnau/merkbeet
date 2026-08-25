@@ -17,6 +17,7 @@
     }:
     let
       inherit (nixpkgs) lib;
+      projectDescriptor = builtins.fromJSON (builtins.readFile ./project.json);
       forAllSystems = lib.genAttrs [
         "aarch64-linux"
         "x86_64-linux"
@@ -232,6 +233,7 @@
         };
     in
     {
+      lib.project = projectDescriptor;
       packages = forAllSystems mkPackages;
 
       checks = forAllSystems (
