@@ -1,0 +1,51 @@
+name: CI
+
+# Pull requests stop after QA. Main pushes and manual runs publish only after
+# the same flake checks pass for the exact revision.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: merkbeet-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NIX_CONFIG: experimental-features = nix-command flakes
+
+jobs:
+  qa:
+    name: Build and check
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Add Nix to PATH
+        run: |
+          set -euo pipefail
+          if [ -x /run/current-system/sw/bin/nix ]; then
+            echo /run/current-system/sw/bin >> "$GITHUB_PATH"
+            export PATH="/run/current-system/sw/bin:$PATH"
+          fi
+          nix --version
+
+      - name: Run QA
+        run: nix flake check --print-build-logs
+
+  release:
+    name: Release
+    if: github.event_name != 'pull_request'
+    needs: qa
+    uses: schnau/nix-infra-modules/.gitea/workflows/project-release.yml@main
+    with:
+      verification_check: release
