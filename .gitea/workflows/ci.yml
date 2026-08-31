@@ -47,5 +47,3 @@ jobs:
     if: github.event_name != 'pull_request'
     needs: qa
     uses: schnau/nix-infra-modules/.gitea/workflows/project-release.yml@main
-    with:
-      verification_check: release
