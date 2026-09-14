@@ -3,8 +3,9 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    devenv.url = "github:cachix/devenv/2418e1b43797c44de5166176622c8d8fa0149871";
     nix-infra-modules = {
-      url = "github:HaukeSchnau/nix-infra-modules/3d11957d4d1c585578548c9a66a95be4edb4021d";
+      url = "git+https://git.schnau.dev/schnau/nix-infra-modules.git?ref=main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -13,6 +14,7 @@
     {
       nixpkgs,
       nix-infra-modules,
+      devenv,
       ...
     }:
     let
@@ -27,8 +29,7 @@
         system:
         let
           pkgs = import nixpkgs { inherit system; };
-          nodejs = pkgs.nodejs_24;
-          pnpm = pkgs.pnpm_11.override { nodejs-slim = pkgs.nodejs-slim_24; };
+          inherit (import ./nix/toolchain.nix { inherit pkgs; }) nodejs pnpm;
           version = "1.0.0";
 
           src = lib.cleanSourceWith {
@@ -41,10 +42,16 @@
               !(lib.elem relative [
                 "flake.lock"
                 "flake.nix"
+                "devenv.nix"
+                "devenv.yaml"
+                "devenv.lock"
+                "nix/toolchain.nix"
+                "nix/development.nix"
                 "README.md"
               ])
               && !(lib.any (prefix: lib.hasPrefix prefix relative) [
                 ".expo/"
+                ".devenv/"
                 ".git/"
                 ".jj/"
                 ".pnpm-store/"
@@ -139,48 +146,21 @@
             '';
           };
 
-          # Development-Plan: das projects-System verlangt ihn auch für
-          # Projekte, die nur ausgeliefert werden.
-          prepareAction = pkgs.writeShellApplication {
+          development = import ./nix/development.nix { inherit pkgs devenv; };
+          prepareAction = development.action {
             name = "merkbeet-prepare-action";
-            runtimeInputs = [
-              nodejs
-              pnpm
-              pkgs.coreutils
-            ];
-            text = ''
-              checkout="$(project-context path checkout)"
-              cache_root="$(project-context path cache)"
-              install -d -m 0700 "$cache_root/pnpm-store"
-              cd "$checkout"
-
-              pnpm install --frozen-lockfile --store-dir "$cache_root/pnpm-store"
-              pnpm run setup:web
-              MERKBEET_BASE_URL="" pnpm run build:web
-            '';
+            task = "merkbeet:web";
           };
-
-          developmentWeb = pkgs.writeShellApplication {
+          developmentWeb = development.action {
             name = "merkbeet-development-web";
-            runtimeInputs = [
-              pkgs.bun
-              pkgs.coreutils
-            ];
-            text = ''
-              checkout="$(project-context path checkout)"
+            task = "devenv:processes:web";
+            bindings = ''
               state_root="$(project-context path state)"
-
               export MERKBEET_STATE_DIR="$state_root/data"
-              install -d -m 0700 "$MERKBEET_STATE_DIR"
-
-              export MERKBEET_WEB_DIR="$checkout/dist"
               export MERKBEET_HOST MERKBEET_PORT MERKBEET_PASSCODE_FILE
               MERKBEET_HOST="$(project-context endpoint web listen-host)"
               MERKBEET_PORT="$(project-context endpoint web listen-port)"
               MERKBEET_PASSCODE_FILE="$(project-context secret-file passcode --required)"
-
-              cd "$checkout"
-              exec bun server/index.ts
             '';
           };
 

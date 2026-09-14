@@ -7,7 +7,9 @@
   },
   "development": {
     "workloads": {
-      "web": {}
+      "web": {
+        "secrets": ["passcode"]
+      }
     },
     "endpoints": {
       "web": {

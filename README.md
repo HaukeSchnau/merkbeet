@@ -27,7 +27,7 @@ Daten mit React Native Skia darstellen und bearbeiten lassen.
 ## Loslegen
 
 ```bash
-pnpm install
+devenv shell        # devenv 2.3.1, installiert die fixierten Abhängigkeiten
 pnpm run android     # oder: pnpm run ios
 ```
 
@@ -43,14 +43,36 @@ Die Web-Variante läuft ebenfalls vollständig — Skia kommt dort als CanvasKit
 Die Web-App läuft unter **<https://merkbeet.schnau.dev>**. Ein gemeinsamer
 Zugangscode schützt die synchronisierten Daten.
 
-Lokal:
+Lokal definiert `devenv.nix` die Werkzeuge, Vorbereitung und den Web-Dienst.
+`devenv.lock` hält die Versionen fest. Die Shell installiert Abhängigkeiten;
+`devenv up` erzeugt CanvasKit und den Web-Export und startet Bun im Vordergrund.
+Unveränderte Aufgaben werden wiederverwendet, gelöschte Ausgaben neu gebaut.
 
 ```bash
-pnpm install
-pnpm run setup:web    # legt canvaskit.wasm in public/ ab (nicht im Repo)
-pnpm run web          # Dev-Server
-pnpm run server       # Sync-Dienst, braucht MERKBEET_PASSCODE
+devenv shell
+# Einen eigenen Entwicklungscode in einer privaten Datei hinterlegen.
+export MERKBEET_PASSCODE_FILE=/absoluter/pfad/zum/entwicklungscode
+devenv up
+devenv tasks run merkbeet:check
 ```
+
+Der Dienst lauscht standardmäßig auf Port 8787 und speichert Daten unter
+`.devenv/state/data`. `MERKBEET_HOST`, `MERKBEET_PORT` und `MERKBEET_STATE_DIR`
+überschreiben diese Werte. Native Android/iOS-Befehle bleiben die vorhandenen
+pnpm-Skripte. Für Metro statt des vorbereiteten Exports gibt es weiter `pnpm run web`.
+
+T3 aktiviert die Werkzeuge und Shell-Aufgaben automatisch. Zwei Workspaces haben
+getrennte Daten und können denselben internen Port nutzen. Eine temporäre Vorschau:
+
+```bash
+agent-service run preview --port 8787 --publish --ttl 3h --wait-http /healthz --wait-timeout 120 -- bash -c 'export MERKBEET_PASSCODE_FILE="$PWD/.devenv/preview-passcode"; exec devenv --no-tui --no-reload up --strict-ports'
+```
+
+Dafür vorher den eigenen Entwicklungscode in `.devenv/preview-passcode` ablegen.
+Der verwaltete Project-Dienst erhält Port, Instanzdaten und Zugangscode-Datei von
+infra. Nach Änderungen an der Entwicklungsdefinition `project dev bundle refresh`
+und `project dev up` ausführen. Normales Aufwecken braucht keine Nix-Auswertung.
+Der unveränderliche Release-Build bleibt in `flake.nix`.
 
 ```bash
 pnpm run typecheck   # tsc --noEmit
