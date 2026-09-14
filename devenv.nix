@@ -3,6 +3,16 @@
   packages = builtins.attrValues (import ./nix/toolchain.nix { inherit pkgs; });
   env.EXPO_NO_TELEMETRY = "1";
 
+  enterShell = ''
+    if [[ "''${PROJECT_DEVENV_MANAGED:-}" == 1 ]]; then
+      export MERKBEET_STATE_DIR MERKBEET_HOST MERKBEET_PORT MERKBEET_PASSCODE_FILE
+      MERKBEET_STATE_DIR="$(project-context path state)/data"
+      MERKBEET_HOST="$(project-context endpoint web listen-host)"
+      MERKBEET_PORT="$(project-context endpoint web listen-port)"
+      MERKBEET_PASSCODE_FILE="$(project-context secret-file passcode --required)"
+    fi
+  '';
+
   tasks = {
     "merkbeet:dependencies" = {
       before = [ "devenv:enterShell" ];

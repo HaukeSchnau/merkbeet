@@ -3,7 +3,6 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    devenv.url = "github:cachix/devenv/2418e1b43797c44de5166176622c8d8fa0149871";
     nix-infra-modules = {
       url = "git+https://git.schnau.dev/schnau/nix-infra-modules.git?ref=main";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -14,7 +13,6 @@
     {
       nixpkgs,
       nix-infra-modules,
-      devenv,
       ...
     }:
     let
@@ -46,7 +44,6 @@
                 "devenv.yaml"
                 "devenv.lock"
                 "nix/toolchain.nix"
-                "nix/development.nix"
                 "README.md"
               ])
               && !(lib.any (prefix: lib.hasPrefix prefix relative) [
@@ -146,33 +143,6 @@
             '';
           };
 
-          development = import ./nix/development.nix { inherit pkgs devenv; };
-          prepareAction = development.action {
-            name = "merkbeet-prepare-action";
-            task = "merkbeet:web";
-          };
-          developmentWeb = development.action {
-            name = "merkbeet-development-web";
-            task = "devenv:processes:web";
-            bindings = ''
-              state_root="$(project-context path state)"
-              export MERKBEET_STATE_DIR="$state_root/data"
-              export MERKBEET_HOST MERKBEET_PORT MERKBEET_PASSCODE_FILE
-              MERKBEET_HOST="$(project-context endpoint web listen-host)"
-              MERKBEET_PORT="$(project-context endpoint web listen-port)"
-              MERKBEET_PASSCODE_FILE="$(project-context secret-file passcode --required)"
-            '';
-          };
-
-          developmentRuntime = nix-infra-modules.lib.projectRuntime.mkDevelopment {
-            inherit pkgs;
-            descriptorPath = ./project.json;
-            actions = {
-              prepare = prepareAction;
-              web = developmentWeb;
-            };
-          };
-
           releaseWeb = pkgs.writeShellApplication {
             name = "merkbeet-release-web";
             runtimeInputs = [
@@ -208,7 +178,6 @@
         {
           default = releaseRuntime.package;
           inherit web service;
-          projectRuntime = developmentRuntime.package;
           projectRelease = releaseRuntime.package;
         };
     in
@@ -228,7 +197,6 @@
             test -f ${packages.web}/canvaskit.wasm
             test -f ${packages.service}/lib/merkbeet-server.js
             test -x ${packages.projectRelease}/bin/project-release-runtime
-            test -x ${packages.projectRuntime}/bin/merkbeet-project-runtime
             cmp ${./project.json} ${packages.projectRelease}/share/project/descriptor.json
             touch $out
           '';

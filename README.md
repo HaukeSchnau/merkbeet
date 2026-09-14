@@ -70,7 +70,8 @@ agent-service run preview --port 8787 --publish --ttl 3h --wait-http /healthz --
 
 Dafür vorher den eigenen Entwicklungscode in `.devenv/preview-passcode` ablegen.
 Der verwaltete Project-Dienst erhält Port, Instanzdaten und Zugangscode-Datei von
-infra. Nach Änderungen an der Entwicklungsdefinition `project dev bundle refresh`
+infra. Alle Projects verwenden dort denselben vorbereiteten devenv-Adapter.
+Nach Änderungen an der Entwicklungsdefinition `project dev bundle refresh`
 und `project dev up` ausführen. Normales Aufwecken braucht keine Nix-Auswertung.
 Der unveränderliche Release-Build bleibt in `flake.nix`.
 
