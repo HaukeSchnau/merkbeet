@@ -18,6 +18,16 @@ const base = `http://127.0.0.1:${PORT}`;
 let stateDir: string;
 let child: ReturnType<typeof Bun.spawn>;
 
+// Die gebundene Zugangscode-Datei eines Dev-Workspaces darf den Testcode nicht überschreiben.
+const serverEnv = () => ({
+  ...process.env,
+  MERKBEET_HOST: "127.0.0.1",
+  MERKBEET_PORT: String(PORT),
+  MERKBEET_STATE_DIR: stateDir,
+  MERKBEET_PASSCODE: PASSCODE,
+  MERKBEET_PASSCODE_FILE: "",
+});
+
 const api = (path: string, init: RequestInit = {}) =>
   fetch(`${base}${path}`, {
     ...init,
@@ -33,7 +43,7 @@ const push = async (changes: PlantChange[]): Promise<GardenSnapshot> => {
 beforeAll(async () => {
   stateDir = mkdtempSync(join(tmpdir(), "merkbeet-test-"));
   child = Bun.spawn(["bun", "server/index.ts"], {
-    env: { ...process.env, MERKBEET_PORT: String(PORT), MERKBEET_STATE_DIR: stateDir, MERKBEET_PASSCODE: PASSCODE },
+    env: serverEnv(),
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -161,7 +171,7 @@ describe("Dauerhaftigkeit", () => {
     await child.exited;
 
     child = Bun.spawn(["bun", "server/index.ts"], {
-      env: { ...process.env, MERKBEET_PORT: String(PORT), MERKBEET_STATE_DIR: stateDir, MERKBEET_PASSCODE: PASSCODE },
+      env: serverEnv(),
       stdout: "pipe",
       stderr: "pipe",
     });
