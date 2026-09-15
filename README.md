@@ -61,19 +61,17 @@ Der Dienst lauscht standardmäßig auf Port 8787 und speichert Daten unter
 überschreiben diese Werte. Native Android/iOS-Befehle bleiben die vorhandenen
 pnpm-Skripte. Für Metro statt des vorbereiteten Exports gibt es weiter `pnpm run web`.
 
-T3 aktiviert die Werkzeuge und Shell-Aufgaben automatisch. Zwei Workspaces haben
-getrennte Daten und können denselben internen Port nutzen. Eine temporäre Vorschau:
+T3 aktiviert die Werkzeuge und Shell-Aufgaben automatisch. Mit `project dev up`
+startet die verwaltete Vorschau im Haupt-Checkout oder in einem isolierten
+Workspace. Jede Instanz erhält eine eigene URL und eigene Daten; infra bindet
+die Zugangscode-Datei ein.
 
-```bash
-agent-service run preview --port 8787 --publish --ttl 3h --wait-http /healthz --wait-timeout 120 -- bash -c 'export MERKBEET_PASSCODE_FILE="$PWD/.devenv/preview-passcode"; exec devenv --no-tui --no-reload up --strict-ports'
-```
-
-Dafür vorher den eigenen Entwicklungscode in `.devenv/preview-passcode` ablegen.
-Der verwaltete Project-Dienst erhält Port, Instanzdaten und Zugangscode-Datei von
-infra. Alle Projects verwenden dort denselben vorbereiteten devenv-Adapter.
-Nach Änderungen an der Entwicklungsdefinition `project dev bundle refresh`
-und `project dev up` ausführen. Normales Aufwecken braucht keine Nix-Auswertung.
-Der unveränderliche Release-Build bleibt in `flake.nix`.
+`devenv.nix` deklariert auch den Project-Endpunkt, das persistente Datenverzeichnis,
+den Zugangscode und die Release-Einstellungen. `project.json` wird daraus erzeugt.
+Nach Änderungen `project export` ausführen, die erzeugte Datei committen und
+`project dev bundle refresh` aufrufen. Normales Aufwecken braucht keine
+Nix-Auswertung. Der unveränderliche Release-Build bleibt in `flake.nix` und
+verwendet dieselben deklarierten Laufzeitvariablen.
 
 ```bash
 pnpm run typecheck   # tsc --noEmit

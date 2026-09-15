@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nix-infra-modules = {
-      url = "git+https://git.schnau.dev/schnau/nix-infra-modules.git?ref=main";
+      url = "github:HaukeSchnau/nix-infra-modules/8a2f0de96b2aa8c1d35fda089c3ead92085f034c";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -150,17 +150,8 @@
               pkgs.coreutils
             ];
             text = ''
-              state_root="$(project-context path state)"
-
-              export MERKBEET_STATE_DIR="$state_root/data"
               install -d -m 0700 "$MERKBEET_STATE_DIR"
-
               export MERKBEET_WEB_DIR=${web}
-              export MERKBEET_HOST MERKBEET_PORT MERKBEET_PASSCODE_FILE
-              MERKBEET_HOST="$(project-context endpoint web listen-host)"
-              MERKBEET_PORT="$(project-context endpoint web listen-port)"
-              MERKBEET_PASSCODE_FILE="$(project-context secret-file passcode --required)"
-
               exec bun ${service}/lib/merkbeet-server.js
             '';
           };

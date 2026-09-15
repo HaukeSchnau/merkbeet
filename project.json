@@ -1,39 +1,147 @@
 {
-  "$schema": "https://raw.githubusercontent.com/HaukeSchnau/nix-infra-modules/main/schemas/project-descriptor/v2.json",
-  "schemaVersion": 2,
-  "project": "merkbeet",
-  "secrets": {
-    "passcode": {}
-  },
   "development": {
-    "workloads": {
-      "web": {
-        "secrets": ["passcode"]
-      }
-    },
+    "commands": {},
     "endpoints": {
       "web": {
         "health": {
-          "paths": ["/healthz"],
-          "startupTimeoutSec": 30,
-          "requestTimeoutSec": 10
+          "intervalSec": 1,
+          "paths": [
+            "/healthz"
+          ],
+          "requestTimeoutSec": 10,
+          "startupTimeoutSec": 30
+        },
+        "port": 8787,
+        "protocol": "http",
+        "publication": "preview",
+        "workload": "web"
+      }
+    },
+    "preparation": {
+      "action": "prepare",
+      "secrets": [
+        "passcode"
+      ],
+      "timeoutSec": 900
+    },
+    "providers": {},
+    "workloads": {
+      "web": {
+        "action": "web",
+        "dependsOn": [],
+        "kind": "service",
+        "lifecycle": "on-demand",
+        "secrets": [
+          "passcode"
+        ]
+      }
+    }
+  },
+  "environment": {
+    "development": {
+      "actions": {},
+      "common": {
+        "MERKBEET_HOST": {
+          "endpoint": "web",
+          "field": "listen.host"
+        },
+        "MERKBEET_PASSCODE_FILE": {
+          "binding": "passcode",
+          "field": "file"
+        },
+        "MERKBEET_PORT": {
+          "endpoint": "web",
+          "field": "listen.port"
+        },
+        "MERKBEET_STATE_DIR": {
+          "binding": "data",
+          "field": "path"
+        }
+      }
+    },
+    "release": {
+      "actions": {},
+      "common": {
+        "MERKBEET_HOST": {
+          "endpoint": "web",
+          "field": "listen.host"
+        },
+        "MERKBEET_PASSCODE_FILE": {
+          "binding": "passcode",
+          "field": "file"
+        },
+        "MERKBEET_PORT": {
+          "endpoint": "web",
+          "field": "listen.port"
+        },
+        "MERKBEET_STATE_DIR": {
+          "binding": "data",
+          "field": "path"
         }
       }
     }
   },
+  "parameters": {},
+  "project": "merkbeet",
   "release": {
+    "action": "web",
+    "activationExecutable": null,
+    "backend": "service",
+    "commands": {},
+    "executable": "project-release-runtime",
     "health": {
-      "paths": ["/healthz", "/"],
-      "startupTimeoutSec": 30,
-      "requestTimeoutSec": 10
+      "intervalSec": 2,
+      "paths": [
+        "/healthz",
+        "/"
+      ],
+      "requestTimeoutSec": 10,
+      "startupTimeoutSec": 30
     },
-    "stateDirectories": ["data"],
     "ingress": {
+      "cacheRules": [],
       "compression": true,
+      "redirects": [],
       "requestBodyMaxBytes": 12583936,
       "responseHeaders": {
         "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
-      }
+      },
+      "streamCloseDelaySec": null
+    },
+    "maintenanceJobs": {},
+    "ociAuxiliaries": {},
+    "package": "projectRelease",
+    "preDeployTasks": {},
+    "stateDirectories": []
+  },
+  "requirements": {
+    "data": {
+      "description": "",
+      "kind": "directory",
+      "path": "data",
+      "persistent": true,
+      "realizations": [
+        "development",
+        "release"
+      ],
+      "required": true
+    },
+    "passcode": {
+      "description": "",
+      "generate": null,
+      "kind": "secret",
+      "realizations": [
+        "development",
+        "release"
+      ],
+      "required": true
+    }
+  },
+  "schemaVersion": 4,
+  "secrets": {
+    "passcode": {
+      "description": "",
+      "required": true
     }
   }
 }
