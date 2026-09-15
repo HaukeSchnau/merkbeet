@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nix-infra-modules = {
-      url = "github:HaukeSchnau/nix-infra-modules/8a2f0de96b2aa8c1d35fda089c3ead92085f034c";
+      url = "github:HaukeSchnau/nix-infra-modules/a78a097b289c9f1b79162b1e2729a27b51eaa8bc";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -17,7 +17,7 @@
     }:
     let
       inherit (nixpkgs) lib;
-      projectDescriptor = builtins.fromJSON (builtins.readFile ./project.json);
+      projectDescriptor = nix-infra-modules.lib.projectDefinition { modules = [ ./project.nix ]; };
       forAllSystems = lib.genAttrs [
         "aarch64-linux"
         "x86_64-linux"
@@ -40,6 +40,7 @@
               !(lib.elem relative [
                 "flake.lock"
                 "flake.nix"
+                "project.nix"
                 "devenv.nix"
                 "devenv.yaml"
                 "devenv.lock"
@@ -158,7 +159,7 @@
 
           releaseRuntime = nix-infra-modules.lib.projectRuntime.mkServiceRelease {
             inherit pkgs;
-            descriptorPath = ./project.json;
+            descriptor = projectDescriptor;
             payloads = [
               service
               web
@@ -188,7 +189,9 @@
             test -f ${packages.web}/canvaskit.wasm
             test -f ${packages.service}/lib/merkbeet-server.js
             test -x ${packages.projectRelease}/bin/project-release-runtime
-            cmp ${./project.json} ${packages.projectRelease}/share/project/descriptor.json
+            cmp ${
+              pkgs.writeText "project.json" (builtins.toJSON projectDescriptor + "\n")
+            } ${packages.projectRelease}/share/project/descriptor.json
             touch $out
           '';
         }

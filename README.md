@@ -66,12 +66,19 @@ startet die verwaltete Vorschau im Haupt-Checkout oder in einem isolierten
 Workspace. Jede Instanz erhält eine eigene URL und eigene Daten; infra bindet
 die Zugangscode-Datei ein.
 
-`devenv.nix` deklariert auch den Project-Endpunkt, das persistente Datenverzeichnis,
-den Zugangscode und die Release-Einstellungen. `project.json` wird daraus erzeugt.
-Nach Änderungen `project export` ausführen, die erzeugte Datei committen und
-`project dev bundle refresh` aufrufen. Normales Aufwecken braucht keine
-Nix-Auswertung. Der unveränderliche Release-Build bleibt in `flake.nix` und
-verwendet dieselben deklarierten Laufzeitvariablen.
+`project.nix` deklariert das persistente Datenverzeichnis, den Zugangscode,
+die gemeinsamen Laufzeitvariablen und die Release-Einstellungen. `devenv.nix`
+importiert diese Definition und ergänzt Entwicklungswerkzeuge, Aufgaben und den
+Vorschau-Endpunkt. `flake.nix` liest die gemeinsame Definition direkt und baut
+daraus das unveränderliche Produktionspaket.
+
+Vorbereitung und Release-Build erzeugen ihre JSON-Metadaten automatisch.
+Eine eingecheckte `project.json` und ein manueller Export sind nicht nötig.
+Nach Änderungen an der verwalteten Entwicklungskonfiguration
+`project dev bundle refresh` aufrufen. Normales Aufwecken nutzt die vorbereitete
+Konfiguration ohne Nix-Auswertung, auch während Nix-Dateien bearbeitet werden.
+`project inspect --json` zeigt die aktuelle Entwicklungsdefinition,
+`nix eval --json .#lib.project` die Produktionsdefinition.
 
 ```bash
 pnpm run typecheck   # tsc --noEmit
