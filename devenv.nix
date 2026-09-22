@@ -55,14 +55,8 @@
   };
 
   processes.web = {
-    project.endpoints.web = {
-      port = 8787;
-      health = {
-        paths = [ "/healthz" ];
-        startupTimeoutSec = 30;
-        requestTimeoutSec = 10;
-      };
-    };
+    # Health checks come from release.health.
+    project.endpoints.web.port = 8787;
     after = [ "merkbeet:web" ];
     exec = ''
       export MERKBEET_STATE_DIR="''${MERKBEET_STATE_DIR:-$DEVENV_STATE/data}"

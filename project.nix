@@ -30,7 +30,6 @@ in
       passcode.kind = "secret";
     };
     environment = runtimeEnvironment;
-    releaseEnvironment.common = runtimeEnvironment;
     release = {
       health = {
         paths = [

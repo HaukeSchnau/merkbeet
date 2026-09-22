@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nix-infra-modules = {
-      url = "github:HaukeSchnau/nix-infra-modules/a78a097b289c9f1b79162b1e2729a27b51eaa8bc";
+      url = "github:HaukeSchnau/nix-infra-modules/c08469c9ed76a0e2223cb6bf1ac624580be6f98c";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -16,49 +16,19 @@
       ...
     }:
     let
-      inherit (nixpkgs) lib;
-      projectDescriptor = nix-infra-modules.lib.projectDefinition { modules = [ ./project.nix ]; };
-      forAllSystems = lib.genAttrs [
-        "aarch64-linux"
-        "x86_64-linux"
-      ];
+      src = nix-infra-modules.lib.projectSource {
+        root = ./.;
+        exclude = [
+          "docs"
+          "nix/toolchain.nix"
+        ];
+      };
 
       mkPackages =
-        system:
+        pkgs:
         let
-          pkgs = import nixpkgs { inherit system; };
           inherit (import ./nix/toolchain.nix { inherit pkgs; }) nodejs pnpm;
           version = "1.0.0";
-
-          src = lib.cleanSourceWith {
-            src = ./.;
-            filter =
-              path: _type:
-              let
-                relative = lib.removePrefix ((toString ./.) + "/") (toString path);
-              in
-              !(lib.elem relative [
-                "flake.lock"
-                "flake.nix"
-                "project.nix"
-                "devenv.nix"
-                "devenv.yaml"
-                "devenv.lock"
-                "nix/toolchain.nix"
-                "README.md"
-              ])
-              && !(lib.any (prefix: lib.hasPrefix prefix relative) [
-                ".expo/"
-                ".devenv/"
-                ".git/"
-                ".jj/"
-                ".pnpm-store/"
-                ".state/"
-                "dist/"
-                "docs/"
-                "node_modules/"
-              ]);
-          };
 
           pnpmDeps = pkgs.fetchPnpmDeps {
             pname = "merkbeet-pnpm-dependencies";
@@ -156,45 +126,40 @@
               exec bun ${service}/lib/merkbeet-server.js
             '';
           };
-
-          releaseRuntime = nix-infra-modules.lib.projectRuntime.mkServiceRelease {
-            inherit pkgs;
-            descriptor = projectDescriptor;
-            payloads = [
-              service
-              web
-            ];
-            actions.web = releaseWeb;
-          };
         in
         {
-          default = releaseRuntime.package;
-          inherit web service;
-          projectRelease = releaseRuntime.package;
+          inherit web service releaseWeb;
         };
-    in
-    {
-      lib.project = projectDescriptor;
-      packages = forAllSystems mkPackages;
 
-      checks = forAllSystems (
-        system:
+      project = nix-infra-modules.lib.projectFlake {
+        inherit nixpkgs;
+        modules = [ ./project.nix ];
+        release =
+          { pkgs, ... }:
+          let
+            packages = mkPackages pkgs;
+          in
+          {
+            payloads = [
+              packages.service
+              packages.web
+            ];
+            actions.web = packages.releaseWeb;
+          };
+      };
+    in
+    project
+    // {
+      packages = nixpkgs.lib.mapAttrs (
+        system: releases:
         let
-          pkgs = import nixpkgs { inherit system; };
-          packages = mkPackages system;
+          packages = mkPackages nixpkgs.legacyPackages.${system};
         in
-        {
-          release = pkgs.runCommand "merkbeet-release-check" { } ''
-            test -f ${packages.web}/index.html
-            test -f ${packages.web}/canvaskit.wasm
-            test -f ${packages.service}/lib/merkbeet-server.js
-            test -x ${packages.projectRelease}/bin/project-release-runtime
-            cmp ${
-              pkgs.writeText "project.json" (builtins.toJSON projectDescriptor + "\n")
-            } ${packages.projectRelease}/share/project/descriptor.json
-            touch $out
-          '';
+        releases
+        // {
+          default = releases.projectRelease;
+          inherit (packages) web service;
         }
-      );
+      ) project.packages;
     };
 }
