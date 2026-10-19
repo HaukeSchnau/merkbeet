@@ -5,7 +5,7 @@ lieber eine installierte App wollen.
 
 ## Warum in der Cloud
 
-Das Android-NDK gibt es nur für `linux-x86_64`. srv-2 ist aarch64, und React
+Das Android-NDK gibt es nur für `linux-x86_64`. Der Entwicklungsrechner ist aarch64, und React
 Native 0.86 braucht das NDK für die Codegen der neuen Architektur — ein lokaler
 Build fiele damit auf Emulation zurück. Deshalb läuft der Build über EAS auf
 Expos x86_64-Maschinen.
@@ -32,7 +32,7 @@ Korrekturen, die nur JavaScript betreffen, gehen ohne neuen Build raus:
 CI=1 pnpm dlx eas-cli@latest update --channel store --environment production -m "..."
 ```
 
-Auf srv-2 (aarch64) muss vorher einmal `scripts/hermesc-arm-wrapper.sh` laufen:
+Auf einem aarch64-Rechner muss vorher einmal `scripts/hermesc-arm-wrapper.sh` laufen:
 der von Expo mitgelieferte Hermes-Compiler ist x86_64 und wird sonst nicht
 ausgeführt. Das Skript emuliert denselben Compiler über qemu, statt einen
 anderen einzusetzen -- die Bytecode-Version muss zur App passen. Nach jedem
@@ -53,8 +53,8 @@ google-play-internal-release \
   'Kurze deutsche Versionshinweise.'
 ```
 
-`google-play-internal-release` ist auf `srv-2` installiert und benutzt dort das
-dauerhaft hinterlegte Urbs-Service-Konto. Der Befehl kann ausschließlich in den
+`google-play-internal-release` kommt aus der Entwicklungsumgebung und benutzt das
+dort hinterlegte Urbs-Service-Konto. Der Befehl kann ausschließlich in den
 internen Test einreichen, prüft die Änderung vor dem Veröffentlichen und liest
 den fertigen Track anschließend noch einmal zurück. Weder das MacBook noch ein
 manueller Upload im Play Console sind dafür nötig.

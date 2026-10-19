@@ -2,7 +2,7 @@
 # Macht 'eas update' auf einem aarch64-Rechner möglich.
 #
 # Der Hermes-Compiler, den Expo mitbringt, ist eine x86_64-Binärdatei. Auf
-# srv-2 (aarch64) lässt sie sich nicht ausführen, und 'eas update' scheitert
+# aarch64-Rechnern lässt sie sich nicht ausführen, und 'eas update' scheitert
 # beim Übersetzen in Bytecode. Statt einen anderen Compiler einzusetzen -- die
 # Bytecode-Version muss exakt zur App passen -- wird derselbe emuliert.
 #
