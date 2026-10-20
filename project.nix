@@ -42,7 +42,10 @@ in
       ingress = {
         compression = true;
         requestBodyMaxBytes = 12583936;
-        responseHeaders.Strict-Transport-Security = "max-age=31536000; includeSubDomains";
+        responseHeaders = {
+          Strict-Transport-Security = "max-age=31536000; includeSubDomains";
+          X-Robots-Tag = "noindex";
+        };
       };
     };
   };

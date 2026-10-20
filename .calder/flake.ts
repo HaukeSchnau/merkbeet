@@ -4,5 +4,5 @@ import { Flake } from "@calder-ci/core"
 export const flake = Flake.make({
   packages: ["default", "projectRelease", "service", "web"],
   checks: ["projectRelease", "projectRelease-interface"],
-  devShells: [],
+  devShells: ["ci"],
 })

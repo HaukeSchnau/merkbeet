@@ -1,0 +1,6 @@
+# Alchemy und seine Werkzeuge; workerd braucht der Stack nicht.
+allowBuilds:
+  esbuild: true
+  workerd: false
+minimumReleaseAgeExclude:
+  - '@schnau/fleet@0.1.0'

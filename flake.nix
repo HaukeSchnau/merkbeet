@@ -19,6 +19,7 @@
       src = nix-infra-modules.lib.projectSource {
         root = ./.;
         exclude = [
+          "deploy"
           "docs"
           "nix/toolchain.nix"
         ];
@@ -159,6 +160,21 @@
         // {
           default = releases.projectRelease;
           inherit (packages) web service;
+        }
+      ) project.packages;
+      devShells = nixpkgs.lib.mapAttrs (
+        system: _:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          toolchain = import ./nix/toolchain.nix { inherit pkgs; };
+        in
+        {
+          ci = pkgs.mkShell {
+            packages = [
+              toolchain.nodejs
+              toolchain.pnpm
+            ];
+          };
         }
       ) project.packages;
     };
