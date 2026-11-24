@@ -28,7 +28,7 @@
     "@types/bun": "^1.3.14",
     "@types/react": "~19.2.2",
     "canvaskit-wasm": "0.41.0",
-    "typescript": "~6.0.3"
+    "tsrs": "^7.1.0-beta.tsrs5"
   },
   "scripts": {
     "start": "pnpm exec expo start",
@@ -36,7 +36,7 @@
     "ios": "pnpm exec expo start --ios",
     "web": "pnpm exec expo start --web",
     "preview": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/render.ts",
-    "typecheck": "pnpm exec tsc --noEmit",
+    "typecheck": "pnpm exec tsrs --noEmit",
     "build:web": "pnpm exec expo export --platform web --output-dir dist",
     "server": "bun server/index.ts",
     "test": "bun test",
