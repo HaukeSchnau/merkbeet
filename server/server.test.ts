@@ -1,7 +1,10 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import { type ChildProcess, spawn } from "node:child_process";
+import { once } from "node:events";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 
 import { resolvePlants } from "../src/sync/merge";
 import type { GardenSnapshot, PlantChange } from "../src/sync/types";
@@ -16,7 +19,7 @@ const PORT = 8791;
 const base = `http://127.0.0.1:${PORT}`;
 
 let stateDir: string;
-let child: ReturnType<typeof Bun.spawn>;
+let child: ChildProcess;
 
 // Die gebundene Zugangscode-Datei eines Dev-Workspaces darf den Testcode nicht überschreiben.
 const serverEnv = () => ({
@@ -40,22 +43,26 @@ const push = async (changes: PlantChange[]): Promise<GardenSnapshot> => {
   return (await response.json()) as GardenSnapshot;
 };
 
-beforeAll(async () => {
-  stateDir = mkdtempSync(join(tmpdir(), "merkbeet-test-"));
-  child = Bun.spawn(["bun", "server/index.ts"], {
-    env: serverEnv(),
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+/** Startet den Dienst unter Bun, wie in Produktion, und wartet, bis er antwortet. */
+const startServer = async () => {
+  child = spawn("bun", ["server/index.ts"], { env: serverEnv(), stdio: "ignore" });
+
   for (let attempt = 0; attempt < 60; attempt++) {
     try {
       if ((await fetch(`${base}/healthz`)).ok) return;
     } catch {
       // Server noch nicht bereit.
     }
-    await Bun.sleep(100);
+
+    await sleep(100);
   }
+
   throw new Error("Server ist nicht gestartet");
+};
+
+beforeAll(async () => {
+  stateDir = mkdtempSync(join(tmpdir(), "merkbeet-test-"));
+  await startServer();
 });
 
 afterAll(() => {
@@ -167,22 +174,10 @@ describe("Sync", () => {
 describe("Dauerhaftigkeit", () => {
   it("hält den Stand über einen Neustart", async () => {
     await push([{ id: "grass-w1", fields: { name: "Haaresgras" } }]);
+    const exited = once(child, "exit");
     child.kill();
-    await child.exited;
-
-    child = Bun.spawn(["bun", "server/index.ts"], {
-      env: serverEnv(),
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    for (let attempt = 0; attempt < 60; attempt++) {
-      try {
-        if ((await fetch(`${base}/healthz`)).ok) break;
-      } catch {
-        // noch nicht bereit
-      }
-      await Bun.sleep(100);
-    }
+    await exited;
+    await startServer();
 
     const snapshot = (await (await api("/api/garden")).json()) as GardenSnapshot;
     expect(snapshot.records["grass-w1"].fields.name?.value).toBe("Haaresgras");

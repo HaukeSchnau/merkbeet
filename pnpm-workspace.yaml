@@ -6,3 +6,23 @@ allowBuilds:
   # Geschwister), braucht also kein Netz und läuft auch im Nix-Sandbox.
   # Für den Android-Build ist es zwingend.
   "@shopify/react-native-skia": true
+minimumReleaseAgeExclude:
+  - "@schnau/tsconfig"
+  # Vite+ 1.8.0 came out between 02:16 and 03:15 UTC on 2026-11-24, and pnpm also checks the
+  # lockfile against minimumReleaseAge. Delete these entries after 2026-11-25T03:16Z.
+  - "@voidzero-dev/vite-plus-core@8.3.8001"
+  - "@voidzero-dev/vite-plus-darwin-arm64@1.8.0"
+  - "@voidzero-dev/vite-plus-darwin-x64@1.8.0"
+  - "@voidzero-dev/vite-plus-linux-arm64-gnu@1.8.0"
+  - "@voidzero-dev/vite-plus-linux-arm64-musl@1.8.0"
+  - "@voidzero-dev/vite-plus-linux-x64-gnu@1.8.0"
+  - "@voidzero-dev/vite-plus-linux-x64-musl@1.8.0"
+  - "@voidzero-dev/vite-plus-win32-arm64-msvc@1.8.0"
+  - "@voidzero-dev/vite-plus-win32-x64-msvc@1.8.0"
+  - vite-plus@1.8.0
+pmOnFail: error
+catalog:
+  vite: npm:@voidzero-dev/vite-plus-core@8.3.8001
+  vite-plus: 1.8.0
+overrides:
+  vite@*: "catalog:"

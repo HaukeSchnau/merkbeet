@@ -4,3 +4,4 @@ allowBuilds:
   workerd: false
 minimumReleaseAgeExclude:
   - '@schnau/fleet@0.1.0'
+pmOnFail: error
