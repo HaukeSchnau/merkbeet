@@ -79,11 +79,15 @@ export const PlantSheet = ({
   const changeDate = (text: string) => {
     if (!plant) return;
     dateDraft.value = text;
+
     if (text.trim() === "") {
       onEdit(plant.id, { plantedAt: undefined });
+
       return;
     }
+
     const iso = parseGermanDate(text);
+
     if (iso) onEdit(plant.id, { plantedAt: iso });
   };
 

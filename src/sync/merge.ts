@@ -35,19 +35,26 @@ const laterOf = <T extends { at: number; value: unknown }>(
   b: T | undefined,
 ): T | undefined => {
   if (!a) return b;
+
   if (!b) return a;
+
   if (a.at !== b.at) return a.at > b.at ? a : b;
+
   return JSON.stringify(a.value ?? null) >= JSON.stringify(b.value ?? null) ? a : b;
 };
 
 const mergeRecord = (a: PlantRecord, b: PlantRecord): PlantRecord => {
   const fields: PlantRecord["fields"] = {};
+
   for (const field of EDITABLE_FIELDS) {
     const winner = laterOf(a.fields[field], b.fields[field]);
+
     if (winner) fields[field] = winner;
   }
+
   const removed = laterOf(a.removed, b.removed);
   const speciesId = a.speciesId ?? b.speciesId;
+
   return {
     id: a.id,
     // Die Art einer selbst gesetzten Pflanze aendert sich nie und wird deshalb
@@ -65,10 +72,12 @@ const mergeRecord = (a: PlantRecord, b: PlantRecord): PlantRecord => {
  */
 export const mergeRecords = (a: PlantRecords, b: PlantRecords): PlantRecords => {
   const merged: PlantRecords = { ...a };
+
   for (const [id, record] of Object.entries(b)) {
     const existing = merged[id];
     merged[id] = existing ? mergeRecord(existing, record) : record;
   }
+
   return merged;
 };
 
@@ -92,6 +101,7 @@ export const applyChange = (
   for (const field of EDITABLE_FIELDS) {
     if (!change.fields || !(field in change.fields)) continue;
     const value = change.fields[field] ?? null;
+
     if (sameValue(next.fields[field]?.value, value)) continue;
     next.fields[field] = { value, at };
   }
@@ -99,6 +109,7 @@ export const applyChange = (
   if (change.removed !== undefined && next.removed?.value !== change.removed) {
     next.removed = { value: change.removed, at };
   }
+
   return next;
 };
 
@@ -108,7 +119,9 @@ export const applyChanges = (
   at: number,
 ): PlantRecords => {
   const next: PlantRecords = { ...records };
+
   for (const change of changes) next[change.id] = applyChange(next[change.id], change, at);
+
   return next;
 };
 
@@ -121,7 +134,9 @@ const readField = <K extends EditableField>(
   field: K,
 ): PlantEdits[K] | undefined => {
   const state = fields[field];
+
   if (!state || state.value === null) return undefined;
+
   return state.value as PlantEdits[K];
 };
 
@@ -162,6 +177,7 @@ export const resolvePlants = (
     .filter((plant) => !records[plant.id]?.removed?.value)
     .map((plant) => {
       const fields = records[plant.id]?.fields;
+
       return fields ? { ...plant, ...editsOf(fields) } : plant;
     });
 };
@@ -173,8 +189,10 @@ export const coalesceChange = (
 ): PlantChange => {
   const speciesId = existing?.speciesId ?? change.speciesId;
   const removed = change.removed ?? existing?.removed;
+
   const fields =
     existing?.fields || change.fields ? { ...existing?.fields, ...change.fields } : undefined;
+
   return {
     id: change.id,
     ...(speciesId ? { speciesId } : {}),

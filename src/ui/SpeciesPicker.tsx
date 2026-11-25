@@ -13,6 +13,7 @@ export type SpeciesPickerProps = {
 /** Farbtupfer als Vorschau -- dieselbe Palette, die der Plan verwendet. */
 const swatchColor = (id: SpeciesId): string => {
   const { art } = SPECIES[id];
+
   return art.kind === "procedural"
     ? (art.palette.bloom ?? art.palette.leafMid)
     : colors.surfaceMuted;

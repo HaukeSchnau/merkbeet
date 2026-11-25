@@ -28,6 +28,7 @@ const time = (label: string, run: () => void) => {
   run();
   const ms = (Bun.nanoseconds() - started) / 1e6;
   console.log(`${label.padEnd(34)} ${ms.toFixed(1).padStart(8)} ms`);
+
   return ms;
 };
 
@@ -36,6 +37,7 @@ const groundTexture = createGroundTexturePicture();
 
 const plantPictures = GARDEN_PLAN.plants.map((plant) => {
   const species = speciesOf(plant.speciesId);
+
   return {
     plant,
     picture: createPlantPicture(
@@ -53,17 +55,21 @@ const cull = Skia.XYWHRect(bounds.x, bounds.y, bounds.width, bounds.height);
 const restingPlants = (() => {
   const recorder = Skia.PictureRecorder();
   const canvas = recorder.beginRecording(cull);
+
   for (const { plant, picture } of plantPictures) {
     canvas.save();
     canvas.translate(plant.position.x, plant.position.y);
     canvas.drawPicture(picture);
     canvas.restore();
   }
+
   return recorder.finishRecordingAsPicture();
 })();
 
 const surface = Skia.Surface.Make(WIDTH, HEIGHT);
+
 if (!surface) throw new Error("Surface konnte nicht erzeugt werden");
+
 const canvas: SkCanvas = surface.getCanvas();
 
 type Layers = { texture: boolean; ground: boolean; plants: boolean };
@@ -73,7 +79,9 @@ const drawFrame = (scale: number, offset: number, layers: Layers, worldX = 0, wo
   canvas.save();
   canvas.translate(-offset - worldX * scale, -offset / 2 - worldY * scale);
   canvas.scale(scale, scale);
+
   if (layers.ground) canvas.drawPicture(layers.texture ? groundTexture : groundFlat);
+
   if (layers.plants) canvas.drawPicture(restingPlants);
   canvas.restore();
   surface.flush();
@@ -82,6 +90,7 @@ const drawFrame = (scale: number, offset: number, layers: Layers, worldX = 0, wo
 const measure = (label: string, scale: number, layers: Layers, worldX = 0, worldY = 0) => {
   drawFrame(scale, 0, layers, worldX, worldY);
   const started = Bun.nanoseconds();
+
   for (let i = 0; i < FRAMES; i++) drawFrame(scale, i * 0.5, layers, worldX, worldY);
   const ms = (Bun.nanoseconds() - started) / 1e6 / FRAMES;
   console.log(`  ${label.padEnd(30)} ${ms.toFixed(1).padStart(7)} ms/Frame`);
@@ -93,7 +102,9 @@ const onlyPlants = { texture: false, ground: false, plants: true };
 const flat = { texture: false, ground: true, plants: true };
 
 console.log("Übersicht (34 px/m) -- ohne Textur, wie die App es zeichnet");
+
 measure("alles flach", 34, flat);
+
 console.log();
 
 for (const scale of [80, 140, 200]) {

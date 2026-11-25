@@ -14,6 +14,7 @@
 
 const parse = (hex: string): [number, number, number] => {
   const value = hex.replace("#", "");
+
   const full =
     value.length === 3
       ? value
@@ -21,6 +22,7 @@ const parse = (hex: string): [number, number, number] => {
           .map((c) => c + c)
           .join("")
       : value;
+
   return [
     Number.parseInt(full.slice(0, 2), 16),
     Number.parseInt(full.slice(2, 4), 16),
@@ -38,5 +40,6 @@ export const over = (base: string, color: string, alpha: number): string => {
   const [br, bg, bb] = parse(base);
   const [cr, cg, cb] = parse(color);
   const mix = (b: number, c: number) => b + (c - b) * alpha;
+
   return `#${toHex(mix(br, cr))}${toHex(mix(bg, cg))}${toHex(mix(bb, cb))}`;
 };

@@ -24,8 +24,11 @@ const loadFont = async (sizeInUnits: number) => {
       "node_modules/@expo-google-fonts/nunito/700Bold/Nunito_700Bold.ttf",
     ).arrayBuffer(),
   );
+
   const typeface = Skia.Typeface.MakeFreeTypeFaceFromData(Skia.Data.fromBytes(bytes));
+
   if (!typeface) throw new Error("Schrift konnte nicht geladen werden");
+
   return Skia.Font(typeface, sizeInUnits);
 };
 
@@ -36,6 +39,7 @@ const writePng = async (
   draw: (canvas: SkCanvas) => void,
 ) => {
   const surface = Skia.Surface.Make(width, height);
+
   if (!surface) throw new Error("Surface konnte nicht erzeugt werden");
   const canvas = surface.getCanvas();
   canvas.clear(Skia.Color("#ffffff"));
@@ -43,6 +47,7 @@ const writePng = async (
   surface.flush();
   const image = surface.makeImageSnapshot();
   const bytes = image.encodeToBytes();
+
   if (!bytes) throw new Error("PNG konnte nicht kodiert werden");
   await Bun.write(new URL(name, OUT_DIR), bytes);
   console.log(`${name}  ${width}x${height}`);
@@ -65,18 +70,22 @@ const renderPlan = async (pixelsPerMeter: number, withTexture = true) => {
     canvas.translate(-bounds.x, -bounds.y);
     canvas.drawPicture(withTexture ? groundTexture : groundFlat);
     canvas.drawPicture(groundAnnotations);
+
     for (const plant of [...plants].sort((a, b) => a.position.y - b.position.y)) {
       const species = speciesOf(plant.speciesId);
+
       const picture = createPlantPicture(
         species,
         plant.diameterMeters ?? species.defaultDiameterMeters,
         plant.id,
       );
+
       canvas.save();
       canvas.translate(plant.position.x, plant.position.y);
       canvas.drawPicture(picture);
       canvas.restore();
     }
+
     canvas.restore();
 
     // Etiketten wie in der App: konstante Groesse in Bildschirmpixeln.
@@ -85,12 +94,15 @@ const renderPlan = async (pixelsPerMeter: number, withTexture = true) => {
     const backdrop = Skia.Paint();
     backdrop.setColor(Skia.Color("#fffdf6"));
     backdrop.setAlphaf(0.92);
+
     for (const plant of plants) {
       const species = speciesOf(plant.speciesId);
       const text = plant.name ?? species.name;
+
       const textW = labelFont
         .getGlyphWidths(labelFont.getGlyphIDs(text))
         .reduce((total, w) => total + w, 0);
+
       const radius = (plant.diameterMeters ?? species.defaultDiameterMeters) / 2;
       const sx = (plant.position.x - bounds.x) * pixelsPerMeter;
       const sy = (plant.position.y - bounds.y) * pixelsPerMeter + radius * pixelsPerMeter + 6;
@@ -135,9 +147,11 @@ const renderSpeciesSheet = async () => {
         );
         canvas.restore();
         const scale = 0.22 / labelFont.getSize();
+
         const width =
           labelFont.getGlyphWidths(labelFont.getGlyphIDs(species.name)).reduce((a, b) => a + b, 0) *
           scale;
+
         canvas.save();
         canvas.translate(cx - width / 2, cy + cell / 2 - 0.1);
         canvas.scale(scale, scale);
@@ -150,5 +164,7 @@ const renderSpeciesSheet = async () => {
 };
 
 await renderPlan(40, false);
+
 await renderPlan(110);
+
 await renderSpeciesSheet();

@@ -30,7 +30,9 @@ const fill = (color: string, alpha = 1): SkPaint => {
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
   paint.setColor(Skia.Color(color));
+
   if (alpha < 1) paint.setAlphaf(alpha);
+
   return paint;
 };
 
@@ -78,6 +80,7 @@ const addLeafRing = (
 ) => {
   const step = 360 / count;
   const phase = rng.range(0, step);
+
   for (let i = 0; i < count; i++) {
     const angle = phase + i * step + rng.jitter(0, step * 0.35);
     const rad = (angle * Math.PI) / 180;
@@ -110,6 +113,7 @@ const drawMound = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng:
     { r: radius * 0.38, count: 8, color: palette.leafMid, leaf: 0.48 },
     { r: radius * 0.14, count: 5, color: palette.leafLight, leaf: 0.44 },
   ];
+
   for (const ring of rings) {
     const b = batch();
     addLeafRing(b, ring.r, ring.count, radius * ring.leaf, radius * ring.leaf * 0.62, rng);
@@ -129,11 +133,13 @@ const drawCanopy = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng
     { r: radius * 0.4, count: 6, color: palette.leafMid },
     { r: radius * 0.18, count: 4, color: palette.leafLight },
   ];
+
   for (const ring of rings) {
     const b = batch();
     addLeafRing(b, ring.r, ring.count, radius * 0.62, radius * 0.42, rng);
     canvas.drawPath(b.detach(), fill(ring.color));
   }
+
   // Stamm blitzt in der Mitte durch die Krone.
   const trunk = batch();
   addCircle(trunk, rng.jitter(0, radius * 0.05), rng.jitter(0, radius * 0.05), radius * 0.09);
@@ -144,6 +150,7 @@ const drawCanopy = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng
 const drawGrass = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng: Rng) => {
   const colors = [palette.leafDark, palette.leafMid, palette.leafLight];
   const groups = colors.map(() => batch());
+
   for (let i = 0; i < 26; i++) {
     const angle = rng.range(0, Math.PI * 2);
     const length = rng.range(radius * 0.55, radius * 1.05);
@@ -158,6 +165,7 @@ const drawGrass = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng:
         Math.sin(angle + bend) * length,
       );
   }
+
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
   paint.setStyle(PaintStyle.Stroke);
@@ -211,6 +219,7 @@ const addCluster: BloomAdder = (petals, cores, cx, cy, size, rng) => {
       size * 0.42,
     );
   }
+
   addCircle(cores, cx, cy, size * 0.45);
 };
 
@@ -224,6 +233,7 @@ const addSpike: BloomAdder = (petals, cores, cx, cy, size, rng) => {
 /** Einzelne gefüllte Blüte -- Rose. */
 const addRosette: BloomAdder = (petals, cores, cx, cy, size, rng) => {
   const phase = rng.range(0, Math.PI);
+
   for (let i = 0; i < 5; i++) {
     const angle = phase + (i / 5) * Math.PI * 2;
     addCircle(
@@ -233,6 +243,7 @@ const addRosette: BloomAdder = (petals, cores, cx, cy, size, rng) => {
       size * 0.46,
     );
   }
+
   addCircle(cores, cx, cy, size * 0.36);
 };
 
@@ -248,6 +259,7 @@ const addUmbel: BloomAdder = (petals, _cores, cx, cy, size, rng) => {
 /** Sternförmige Einzelblüte -- Sternmagnolie. */
 const addStarBloom: BloomAdder = (petals, cores, cx, cy, size, rng) => {
   const phase = rng.range(0, 360);
+
   for (let i = 0; i < 8; i++) {
     const angle = phase + i * 45;
     const rad = (angle * Math.PI) / 180;
@@ -260,6 +272,7 @@ const addStarBloom: BloomAdder = (petals, cores, cx, cy, size, rng) => {
       angle,
     );
   }
+
   addCircle(cores, cx, cy, size * 0.18);
 };
 
@@ -287,6 +300,7 @@ const drawBlooms = (
   const cores = batch();
   const step = (Math.PI * 2) / spec.count;
   const phase = rng.range(0, step);
+
   for (let i = 0; i < spec.count; i++) {
     // Gleichmäßig verteilt mit Streuung -- rein zufällige Winkel klumpen
     // sichtbar auf einer Seite des Strauchs.
@@ -294,6 +308,7 @@ const drawBlooms = (
     const r = rng.range(radius * 0.12, radius * 0.58);
     spec.add(petals, cores, Math.cos(angle) * r, Math.sin(angle) * r, radius * spec.size, rng);
   }
+
   canvas.drawPath(petals.detach(), fill(palette.bloom));
   canvas.drawPath(cores.detach(), fill(palette.bloomCore ?? palette.bloom));
 };
@@ -350,9 +365,11 @@ export const createPlantPicture = (
 ): SkPicture => {
   const radius = diameterMeters / 2;
   const rng = makeRng(seed);
+
   return createPicture(
     (canvas) => {
       drawShadow(canvas, radius);
+
       if (species.art.kind !== "procedural") return;
       const { form, bloom, palette } = species.art;
       FORMS[form](canvas, radius, palette, rng);

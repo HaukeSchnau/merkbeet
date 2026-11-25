@@ -67,10 +67,12 @@ const diameterOf = (plant: Plant, species: Species) =>
 const usePlantPictures = (plants: Plant[]): Map<PlantId, SkPicture> =>
   useMemo(() => {
     const pictures = new Map<PlantId, SkPicture>();
+
     for (const plant of plants) {
       const species = speciesOf(plant.speciesId);
       pictures.set(plant.id, createPlantPicture(species, diameterOf(plant, species), plant.id));
     }
+
     return pictures;
   }, [plants]);
 
@@ -90,11 +92,13 @@ type PlantLabelProps = {
  */
 const PlantLabel = ({ plant, text, font, radiusMeters, viewport, drag }: PlantLabelProps) => {
   const width = useMemo(() => textWidth(font, text), [font, text]);
+
   const transform = useDerivedValue(() => {
     const dragging = drag.id.value === plant.id;
     const scale = viewport.scale.value;
     const wx = plant.position.x + (dragging ? drag.dx.value / scale : 0);
     const wy = plant.position.y + (dragging ? drag.dy.value / scale : 0);
+
     return [
       { translateX: wx * scale + viewport.tx.value },
       { translateY: wy * scale + viewport.ty.value + radiusMeters * scale + 6 },
@@ -120,6 +124,7 @@ const PlantLabel = ({ plant, text, font, radiusMeters, viewport, drag }: PlantLa
 const Compass = ({ screen, font }: { screen: Screen; font: SkFont | null }) => {
   const cx = screen.width - 34;
   const cy = 34;
+
   const needle = useMemo(
     () =>
       Skia.PathBuilder.Make()
@@ -186,13 +191,16 @@ export const GardenCanvas = ({
   const dragId = useSharedValue<PlantId | null>(null);
   const dragDx = useSharedValue(0);
   const dragDy = useSharedValue(0);
+
   const drag: DragState = useMemo(
     () => ({ id: dragId, dx: dragDx, dy: dragDy }),
     [dragId, dragDx, dragDy],
   );
+
   const hitTargets = useSharedValue<HitTarget[]>([]);
   const editing = useSharedValue(editMode);
   const placingNow = useSharedValue(placing);
+
   /**
    * Startwerte der laufenden Geste. Sie muessen Shared Values sein: Reanimated
    * gibt jedem Worklet eine eigene Kopie der eingefangenen Variablen, sodass
@@ -204,6 +212,7 @@ export const GardenCanvas = ({
     ty: useSharedValue(0),
     scale: useSharedValue(1),
   };
+
   /**
    * Ausgangsposition der angehobenen Pflanze und ein Merker, dass sie abgelegt
    * wurde. Beides als Shared Value, damit der gezogene Knoten allein aus
@@ -239,6 +248,7 @@ export const GardenCanvas = ({
           for (const plant of ordered) {
             if (plant.id === draggedId) continue;
             const picture = plantPictures.get(plant.id);
+
             if (!picture) continue;
             canvas.save();
             canvas.translate(plant.position.x, plant.position.y);
@@ -257,15 +267,18 @@ export const GardenCanvas = ({
   );
 
   const draggedPlant = draggedId ? (plants.find((plant) => plant.id === draggedId) ?? null) : null;
+
   const draggedTransform = useDerivedValue(() => [
     { translateX: dragBase.x.value + drag.dx.value / viewport.scale.value },
     { translateY: dragBase.y.value + drag.dy.value / viewport.scale.value },
   ]);
 
   const selected = selectedId ? (plants.find((plant) => plant.id === selectedId) ?? null) : null;
+
   const selectionRadius = selected
     ? diameterOf(selected, speciesOf(selected.speciesId)) / 2 + 0.14
     : 0;
+
   const ringWidth = useDerivedValue(() => 2.5 / viewport.scale.value);
 
   useEffect(() => {
@@ -283,6 +296,7 @@ export const GardenCanvas = ({
     () => viewport.scale.value,
     (scale) => {
       const soll = detailGemeldet.value ? scale > DETAIL_OFF : scale >= DETAIL_ON;
+
       if (soll === detailGemeldet.value) return;
       detailGemeldet.value = soll;
       runOnJS(setDetailed)(soll);
@@ -302,11 +316,14 @@ export const GardenCanvas = ({
   const onLayout = useCallback(
     (event: LayoutChangeEvent) => {
       const { width, height } = event.nativeEvent.layout;
+
       if (width === 0 || height === 0) return;
       setScreen((previous) => {
         if (previous && previous.width === width && previous.height === height) return previous;
+
         return { width, height };
       });
+
       if (!fitted.current) {
         resetViewport(viewport, GARDEN_PLAN.bounds, { width, height });
         fitted.current = true;
@@ -344,10 +361,12 @@ export const GardenCanvas = ({
   useEffect(() => {
     if (!abgelegt) return;
     const plant = plants.find((kandidat) => kandidat.id === abgelegt.id);
+
     const angekommen =
       !plant ||
       (Math.abs(plant.position.x - abgelegt.x) < 1e-6 &&
         Math.abs(plant.position.y - abgelegt.y) < 1e-6);
+
     if (!angekommen) return;
     dropPending.value = false;
     drag.dx.value = 0;
@@ -365,16 +384,19 @@ export const GardenCanvas = ({
       "worklet";
       let best: HitTarget | null = null;
       let bestDistance = Infinity;
+
       for (const target of hitTargets.value) {
         const px = target.x * viewport.scale.value + viewport.tx.value;
         const py = target.y * viewport.scale.value + viewport.ty.value;
         const radius = Math.max(target.r * viewport.scale.value, MIN_TOUCH_RADIUS);
         const distance = Math.sqrt((sx - px) ** 2 + (sy - py) ** 2);
+
         if (distance <= radius && distance < bestDistance) {
           best = target;
           bestDistance = distance;
         }
       }
+
       return best;
     };
 
@@ -401,6 +423,7 @@ export const GardenCanvas = ({
       .onStart((event) => {
         "worklet";
         const hit = editing.value ? findPlant(event.x, event.y) : null;
+
         if (hit) {
           drag.id.value = hit.id;
           drag.dx.value = 0;
@@ -417,11 +440,14 @@ export const GardenCanvas = ({
       })
       .onUpdate((event) => {
         "worklet";
+
         if (drag.id.value !== null) {
           drag.dx.value = event.translationX;
           drag.dy.value = event.translationY;
+
           return;
         }
+
         viewport.tx.value = gestureStart.tx.value + event.translationX;
         viewport.ty.value = gestureStart.ty.value + event.translationY;
         clamp();
@@ -429,6 +455,7 @@ export const GardenCanvas = ({
       .onEnd(() => {
         "worklet";
         const id = drag.id.value;
+
         if (id === null) return;
         drag.id.value = null;
 
@@ -453,6 +480,7 @@ export const GardenCanvas = ({
       // wäre das Zurückspringen wieder da.
       .onFinalize(() => {
         "worklet";
+
         if (dropPending.value || drag.id.value === null) return;
         drag.id.value = null;
         drag.dx.value = 0;
@@ -483,13 +511,16 @@ export const GardenCanvas = ({
       .maxDuration(300)
       .onEnd((event) => {
         "worklet";
+
         if (placingNow.value) {
           runOnJS(onPlace)({
             x: (event.x - viewport.tx.value) / viewport.scale.value,
             y: (event.y - viewport.ty.value) / viewport.scale.value,
           });
+
           return;
         }
+
         const hit = findPlant(event.x, event.y);
         runOnJS(onSelect)(hit ? hit.id : null);
       });
@@ -548,6 +579,7 @@ export const GardenCanvas = ({
             {showLabels && detailed && font
               ? ordered.map((plant) => {
                   const species = speciesOf(plant.speciesId);
+
                   return (
                     <PlantLabel
                       key={plant.id}

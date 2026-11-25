@@ -31,9 +31,11 @@ export class PhotoStore {
 
   async save(bytes: ArrayBuffer, contentType: string | null): Promise<string | null> {
     const extension = contentType ? TYPES[contentType.split(";")[0].trim()] : undefined;
+
     if (!extension) return null;
     const name = `${randomBytes(16).toString("hex")}.${extension}`;
     await Bun.write(join(this.dir, name), bytes);
+
     return `${PHOTO_PATH_PREFIX}${name}`;
   }
 
@@ -41,6 +43,7 @@ export class PhotoStore {
   find(name: string) {
     if (!/^[a-f0-9]{32}\.(jpg|png|webp|heic)$/.test(name)) return null;
     const handle = Bun.file(join(this.dir, name));
+
     return handle;
   }
 }

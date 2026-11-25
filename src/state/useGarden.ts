@@ -19,6 +19,7 @@ import {
 
 /** Wie oft im Hintergrund nachgefragt wird, solange die App offen ist. */
 const POLL_INTERVAL_MS = 20_000;
+
 /** Nach einer Änderung kurz warten, damit Tippen nicht jeden Buchstaben schickt. */
 const PUSH_DEBOUNCE_MS = 1_200;
 const SAVE_DEBOUNCE_MS = 400;
@@ -72,8 +73,10 @@ export const useGarden = (): Garden => {
       setGarden(loaded);
       setPasscodeState(code);
       setReady(true);
+
       if (!code) setState("unauthorized");
     });
+
     return () => {
       active = false;
     };
@@ -82,6 +85,7 @@ export const useGarden = (): Garden => {
   useEffect(() => {
     if (!ready) return;
     const timer = setTimeout(() => void saveGarden(garden), SAVE_DEBOUNCE_MS);
+
     return () => clearTimeout(timer);
   }, [garden, ready]);
 
@@ -92,9 +96,11 @@ export const useGarden = (): Garden => {
    */
   const sync = useCallback(async () => {
     const code = passcodeRef.current;
+
     if (!code || inFlight.current) return;
     inFlight.current = true;
     setState("syncing");
+
     try {
       const sent = gardenRef.current.pending;
       const changes = Object.values(sent);
@@ -103,8 +109,10 @@ export const useGarden = (): Garden => {
         changes.length > 0
           ? await pushGarden(code, changes)
           : await pullGarden(code, gardenRef.current.revision);
+
       if (!result.ok) {
         setState(failureState(result.failure));
+
         return;
       }
 
@@ -112,12 +120,15 @@ export const useGarden = (): Garden => {
         // Was während der Anfrage neu getippt wurde, muss bleiben. Deshalb wird
         // nur entfernt, was unverändert dieselbe Änderung ist, die rausging.
         const pending: Record<PlantId, PlantChange> = {};
+
         for (const [id, change] of Object.entries(previous.pending)) {
           if (sent[id] !== change) pending[id] = change;
         }
+
         if (isUnchanged(result.value)) {
           return { ...previous, revision: result.value.revision, pending };
         }
+
         return {
           version: 2,
           revision: result.value.revision,
@@ -137,9 +148,11 @@ export const useGarden = (): Garden => {
     if (!ready || !passcode) return;
     void sync();
     const timer = setInterval(() => void sync(), POLL_INTERVAL_MS);
+
     const subscription = AppState.addEventListener("change", (next) => {
       if (next === "active") void sync();
     });
+
     return () => {
       clearInterval(timer);
       subscription.remove();
@@ -151,6 +164,7 @@ export const useGarden = (): Garden => {
   useEffect(() => {
     if (!ready || !passcode || pendingCount === 0) return;
     const timer = setTimeout(() => void sync(), PUSH_DEBOUNCE_MS);
+
     return () => clearTimeout(timer);
   }, [pendingCount, garden.pending, ready, passcode, sync]);
 
@@ -168,9 +182,11 @@ export const useGarden = (): Garden => {
     (id: PlantId, edits: PlantEdits) => {
       // `undefined` heißt in der App "Feld leeren"; im Sync-Format ist das null.
       const fields: PlantChange["fields"] = {};
+
       for (const [field, value] of Object.entries(edits)) {
         fields[field as keyof PlantEdits] = value ?? null;
       }
+
       queue({ id, fields });
     },
     [queue],
@@ -186,6 +202,7 @@ export const useGarden = (): Garden => {
       // Zufall im Namen, damit zwei Geräte offline nicht dieselbe id vergeben.
       const id = `${speciesId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
       queue({ id, speciesId, fields: { position } });
+
       return id;
     },
     [queue],

@@ -25,15 +25,19 @@ export const PasscodeScreen = ({ onAccepted }: PasscodeScreenProps) => {
 
   const submit = async () => {
     const trimmed = code.value.trim();
+
     if (trimmed === "" || checking) return;
     setChecking(true);
     setProblem(null);
     const result = await checkPasscode(trimmed);
     setChecking(false);
+
     if (result.ok) {
       onAccepted(trimmed);
+
       return;
     }
+
     setProblem(
       result.failure.kind === "unauthorized"
         ? "Der Code stimmt nicht."

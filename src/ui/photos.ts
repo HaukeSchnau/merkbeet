@@ -19,11 +19,15 @@ export const pickAndUploadPhoto = async (passcode: string): Promise<PhotoOutcome
     // Etwas herunterrechnen: die Bilder sollen über Mobilfunk hochgehen.
     quality: 0.6,
   });
+
   const asset = picked.canceled ? undefined : picked.assets[0];
+
   if (!asset) return { ok: false, reason: "abgebrochen" };
 
   const bytes = await readPhotoBytes(asset.uri);
   const result = await uploadPhoto(passcode, bytes, asset.mimeType ?? "image/jpeg");
+
   if (result.ok) return { ok: true, photoUri: result.value.photoUri };
+
   return { ok: false, reason: result.failure.kind === "offline" ? "offline" : "abgelehnt" };
 };

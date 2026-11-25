@@ -30,6 +30,7 @@ import { GardenCanvas } from "./src/view/GardenCanvas";
 const diagnoseGewuenscht = (): boolean => {
   if (Platform.OS !== "web") return false;
   const suche = globalThis.location?.search;
+
   return typeof suche === "string" && new URLSearchParams(suche).has("diag");
 };
 

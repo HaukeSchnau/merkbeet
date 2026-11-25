@@ -46,6 +46,7 @@ const isLegacy = (value: unknown): value is LegacyGarden =>
  */
 const migrate = (legacy: LegacyGarden): LocalGarden => {
   const pending: Record<PlantId, PlantChange> = {};
+
   for (const item of legacy.added) {
     pending[item.id] = {
       id: item.id,
@@ -53,6 +54,7 @@ const migrate = (legacy: LegacyGarden): LocalGarden => {
       fields: { position: item.position },
     };
   }
+
   for (const [id, edits] of Object.entries(legacy.edits)) {
     pending[id] = {
       ...pending[id],
@@ -60,24 +62,32 @@ const migrate = (legacy: LegacyGarden): LocalGarden => {
       fields: { ...pending[id]?.fields, ...edits },
     };
   }
+
   for (const id of legacy.removed) {
     pending[id] = { ...pending[id], id, removed: true };
   }
+
   return { ...EMPTY_GARDEN, pending };
 };
 
 export const loadGarden = async (): Promise<LocalGarden> => {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
+
     if (raw) {
       const parsed: unknown = JSON.parse(raw);
+
       if (isLocal(parsed)) return parsed;
     }
+
     const legacyRaw = await AsyncStorage.getItem(LEGACY_KEY);
+
     if (legacyRaw) {
       const parsed: unknown = JSON.parse(legacyRaw);
+
       if (isLegacy(parsed)) return migrate(parsed);
     }
+
     return EMPTY_GARDEN;
   } catch {
     // Ein kaputter Speicher darf die App nicht blockieren; dann startet sie mit

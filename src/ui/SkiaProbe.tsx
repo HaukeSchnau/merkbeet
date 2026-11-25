@@ -32,16 +32,21 @@ export const SkiaProbe = ({ onResult }: { onResult: (result: SkiaProbeResult) =>
       // Zustand ändern, damit Skia wirklich neu zeichnen muss.
       setTick((n) => n + 1);
       const verstrichen = performance.now() - start;
+
       if (verstrichen >= 2000) {
         laufend = false;
+
         if (!gemeldet.current) {
           gemeldet.current = true;
           onResult({ fps: Math.round((frames / verstrichen) * 1000), frames, fehler });
         }
+
         return;
       }
+
       requestAnimationFrame(schritt);
     };
+
     requestAnimationFrame(schritt);
 
     return () => {
@@ -52,6 +57,7 @@ export const SkiaProbe = ({ onResult }: { onResult: (result: SkiaProbeResult) =>
   // Bewusst ohne Error Boundary in der App: hier gefangen, damit ein Absturz
   // von Skia als Befund erscheint statt den Bildschirm mitzunehmen.
   let inhalt: React.ReactNode = null;
+
   try {
     inhalt = (
       <Canvas style={styles.canvas}>

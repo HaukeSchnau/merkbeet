@@ -15,13 +15,16 @@ import { colors, radii, spacing } from "./theme";
  */
 const beschreibe = (status: SyncStatus): { text: string; erneut: boolean } | null => {
   if (status.state === "unauthorized") return { text: "Zugangscode nötig", erneut: false };
+
   if (status.state === "offline") {
     return {
       text: status.pendingCount > 0 ? `Offline · ${status.pendingCount} nicht gesendet` : "Offline",
       erneut: true,
     };
   }
+
   if (status.state === "startup") return null;
+
   return status.pendingCount > 0 ? { text: "Wird gesendet …", erneut: false } : null;
 };
 
@@ -32,6 +35,7 @@ export type SyncNoticeProps = {
 
 export const SyncNotice = ({ status, onRetry }: SyncNoticeProps) => {
   const meldung = beschreibe(status);
+
   if (!meldung) return null;
 
   return (

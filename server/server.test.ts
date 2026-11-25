@@ -44,6 +44,7 @@ const api = (path: string, init: RequestInit = {}) =>
 const push = async (changes: PlantChange[]): Promise<GardenSnapshot> => {
   const response = await api("/api/garden", { method: "POST", body: JSON.stringify({ changes }) });
   expect(response.status).toBe(200);
+
   return (await response.json()) as GardenSnapshot;
 };
 
@@ -83,6 +84,7 @@ describe("Zugang", () => {
     const response = await fetch(`${base}/api/garden`, {
       headers: { authorization: "Bearer falsch" },
     });
+
     expect(response.status).toBe(401);
   });
 
@@ -98,6 +100,7 @@ describe("Schema", () => {
       method: "POST",
       body: JSON.stringify({ changes: [{ id: "x", speciesId: "kaktus" }] }),
     });
+
     expect(response.status).toBe(400);
   });
 
@@ -106,6 +109,7 @@ describe("Schema", () => {
       method: "POST",
       body: JSON.stringify({ changes: [{ id: "rose-w1", fields: { diameterMeters: 9999 } }] }),
     });
+
     expect(response.status).toBe(400);
   });
 });
@@ -139,6 +143,7 @@ describe("Sync", () => {
       push([{ id: "rose-s2", fields: { notes: "Mutter" } }]),
       push([{ id: "rose-s3", fields: { notes: "PC" } }]),
     ]);
+
     // Jede Änderung muss angekommen sein, egal wer zuerst dran war.
     const final = (await (await api("/api/garden")).json()) as GardenSnapshot;
     expect(final.records["rose-s1"].fields.notes?.value).toBe("Vater");
@@ -154,11 +159,13 @@ describe("Sync", () => {
         "01f15c4890000000a49444154789c6300010000050001".padEnd(46, "0"),
       "hex",
     );
+
     const upload = await fetch(`${base}/api/photos`, {
       method: "POST",
       headers: { authorization: `Bearer ${PASSCODE}`, "content-type": "image/png" },
       body: png,
     });
+
     expect(upload.status).toBe(200);
     const { photoUri } = (await upload.json()) as { photoUri: string };
     expect(photoUri).toMatch(/^\/api\/photos\/[a-f0-9]{32}\.png$/);
@@ -174,6 +181,7 @@ describe("Sync", () => {
       headers: { authorization: `Bearer ${PASSCODE}`, "content-type": "application/zip" },
       body: Buffer.from("PK"),
     });
+
     expect(response.status).toBe(415);
   });
 });

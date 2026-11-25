@@ -16,7 +16,9 @@ import { join } from "node:path";
 const dateien = (verzeichnis: string): string[] =>
   readdirSync(verzeichnis).flatMap((eintrag) => {
     const pfad = join(verzeichnis, eintrag);
+
     if (statSync(pfad).isDirectory()) return dateien(pfad);
+
     return /\.tsx?$/.test(pfad) && !pfad.endsWith(".test.ts") ? [pfad] : [];
   });
 
@@ -40,6 +42,7 @@ describe("Plattform-Annahmen", () => {
         /\bwindow\.(location|matchMedia|innerWidth|innerHeight|devicePixelRatio)/.test(inhalt),
       )
       .map(({ pfad }) => pfad);
+
     expect(treffer).toEqual([]);
   });
 
@@ -48,6 +51,7 @@ describe("Plattform-Annahmen", () => {
       .filter(({ pfad }) => !nurWeb(pfad))
       .filter(({ inhalt }) => /typeof window === ["']undefined["']/.test(inhalt))
       .map(({ pfad }) => pfad);
+
     expect(treffer).toEqual([]);
   });
 
@@ -57,6 +61,7 @@ describe("Plattform-Annahmen", () => {
       .filter(({ inhalt }) => /\bdocument\./.test(inhalt))
       .filter(({ inhalt }) => !inhalt.includes('Platform.OS !== "web"'))
       .map(({ pfad }) => pfad);
+
     expect(treffer).toEqual([]);
   });
 });

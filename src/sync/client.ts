@@ -39,6 +39,7 @@ const request = async <T>(
 
     if (response.status === 401 || response.status === 429)
       return { ok: false, failure: { kind: "unauthorized" } };
+
     if (!response.ok) {
       return {
         ok: false,
@@ -49,6 +50,7 @@ const request = async <T>(
         },
       };
     }
+
     return { ok: true, value: (await response.json()) as T };
   } catch {
     // fetch wirft bei fehlendem Netz, DNS-Problemen und Zeitüberschreitung.
@@ -86,6 +88,8 @@ export const uploadPhoto = (
 /** Prüft einen eingegebenen Code, ohne etwas zu verändern. */
 export const checkPasscode = async (passcode: string): Promise<SyncResult<PlantRecords>> => {
   const result = await pullGarden(passcode, -1);
+
   if (!result.ok) return result;
+
   return { ok: true, value: isUnchanged(result.value) ? {} : result.value.records };
 };

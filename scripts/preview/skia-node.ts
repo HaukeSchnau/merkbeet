@@ -33,11 +33,14 @@ export const createPicture = (
   rect?: SkRect | SkSize,
 ): SkPicture => {
   const recorder = Skia.PictureRecorder();
+
   const canvas = recorder.beginRecording(
     rect && "width" in rect && !("x" in rect)
       ? Skia.XYWHRect(0, 0, rect.width, rect.height)
       : (rect as SkRect | undefined),
   );
+
   cb(canvas);
+
   return recorder.finishRecordingAsPicture();
 };
