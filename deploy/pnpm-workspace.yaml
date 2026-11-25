@@ -3,5 +3,5 @@ allowBuilds:
   esbuild: true
   workerd: false
 minimumReleaseAgeExclude:
-  - '@schnau/fleet@0.1.0'
+  - "@schnau/fleet@0.1.0"
 pmOnFail: error

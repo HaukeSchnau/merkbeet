@@ -12,12 +12,12 @@ dokumentiert die Kalibrierung.
 
 ## Gemessen (auf der Skizze notiert)
 
-| Maß | Bedeutung |
-| --- | --- |
+| Maß     | Bedeutung                             |
+| ------- | ------------------------------------- |
 | 19,50 m | Gesamtlänge des Beetes, West nach Ost |
-| 7,60 m | Länge des Westarms, Nord nach Süd |
-| 2,50 m | Breite des Westarms |
-| 2,30 m | Tiefe des Südarms |
+| 7,60 m  | Länge des Westarms, Nord nach Süd     |
+| 2,50 m  | Breite des Westarms                   |
+| 2,30 m  | Tiefe des Südarms                     |
 
 Daraus folgt direkt die Terrassentiefe: 7,60 − 2,30 = **5,30 m**.
 
@@ -45,22 +45,22 @@ in dem sie gezeichnet war. Details in `scripts/derive-plan.py`.
 25 Pflanzen, 11 Arten. Die Namen auf der Skizze sind Kürzel; so wurden sie
 gelesen:
 
-| Skizze | Art |
-| --- | --- |
-| Ros | Rose |
-| Lav | Lavendel |
-| Hort | Hortensie |
-| Spier | Spiere (*Spiraea*) |
-| Gras | Ziergras |
-| Somm.flieder | Sommerflieder (*Buddleja davidii*) |
-| Schneeball | Schneeball (*Viburnum*) |
-| Sternmagnolie | Sternmagnolie (*Magnolia stellata*) |
-| Glanzmispel | Glanzmispel (*Photinia fraseri* 'Red Robin') |
-| Lorbeer Port. | Portugiesischer Lorbeer (*Prunus lusitanica*) |
-| Kilimand | Kilimandscharo |
+| Skizze        | Art                                           |
+| ------------- | --------------------------------------------- |
+| Ros           | Rose                                          |
+| Lav           | Lavendel                                      |
+| Hort          | Hortensie                                     |
+| Spier         | Spiere (_Spiraea_)                            |
+| Gras          | Ziergras                                      |
+| Somm.flieder  | Sommerflieder (_Buddleja davidii_)            |
+| Schneeball    | Schneeball (_Viburnum_)                       |
+| Sternmagnolie | Sternmagnolie (_Magnolia stellata_)           |
+| Glanzmispel   | Glanzmispel (_Photinia fraseri_ 'Red Robin')  |
+| Lorbeer Port. | Portugiesischer Lorbeer (_Prunus lusitanica_) |
+| Kilimand      | Kilimandscharo                                |
 
 **Noch zu klären:** "Kilimandscharo" ist auf der Skizze groß eingezeichnet
-(rund 2 m) und als Rispenhortensie *Hydrangea paniculata* modelliert. Die Sorte
+(rund 2 m) und als Rispenhortensie _Hydrangea paniculata_ modelliert. Die Sorte
 sollte bei den Eltern bestätigt werden. Ebenso sind alle Kronendurchmesser aus
 der Größe der gezeichneten Kreise geschätzt, nicht gemessen.
 

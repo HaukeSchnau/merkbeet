@@ -15,7 +15,9 @@ export const CanvasKit = await CanvasKitInit();
  * Umweg ueber `unknown` bruecktt diese Kopien -- zur Laufzeit ist es dasselbe
  * Objekt.
  */
-export const Skia = JsiSkApi(CanvasKit) as unknown as typeof import("@shopify/react-native-skia").Skia;
+export const Skia = JsiSkApi(
+  CanvasKit,
+) as unknown as typeof import("@shopify/react-native-skia").Skia;
 
 export {
   BlurStyle,
@@ -26,7 +28,10 @@ export {
 } from "@shopify/react-native-skia/lib/commonjs/skia/types";
 
 /** Nachbau von `createPicture`; das Original haengt an React Native. */
-export const createPicture = (cb: (canvas: SkCanvas) => void, rect?: SkRect | SkSize): SkPicture => {
+export const createPicture = (
+  cb: (canvas: SkCanvas) => void,
+  rect?: SkRect | SkSize,
+): SkPicture => {
   const recorder = Skia.PictureRecorder();
   const canvas = recorder.beginRecording(
     rect && "width" in rect && !("x" in rect)

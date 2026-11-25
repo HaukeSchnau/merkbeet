@@ -168,5 +168,4 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.surface },
   planFlaeche: { flex: 1 },
   loading: { flex: 1, alignItems: "center", justifyContent: "center" },
-
 });

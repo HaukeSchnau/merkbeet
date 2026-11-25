@@ -38,7 +38,11 @@ const plantPictures = GARDEN_PLAN.plants.map((plant) => {
   const species = speciesOf(plant.speciesId);
   return {
     plant,
-    picture: createPlantPicture(species, plant.diameterMeters ?? species.defaultDiameterMeters, plant.id),
+    picture: createPlantPicture(
+      species,
+      plant.diameterMeters ?? species.defaultDiameterMeters,
+      plant.id,
+    ),
   };
 });
 

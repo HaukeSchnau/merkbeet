@@ -52,7 +52,12 @@ const isLockedOut = (key: string): boolean => {
 const noteFailure = (key: string): void => {
   const entry = failures.get(key);
   const until = Date.now() + FAILURE_WINDOW_MS;
-  failures.set(key, entry && entry.until > Date.now() ? { count: entry.count + 1, until: entry.until } : { count: 1, until });
+  failures.set(
+    key,
+    entry && entry.until > Date.now()
+      ? { count: entry.count + 1, until: entry.until }
+      : { count: 1, until },
+  );
 };
 
 type Authorized = { ok: true } | { ok: false; response: Response };
@@ -96,8 +101,11 @@ const server = Bun.serve({
     // Fotos: die zufällige Adresse ist der Schlüssel, siehe photos.ts.
     if (request.method === "GET" && pathname.startsWith("/api/photos/")) {
       const handle = photos.find(pathname.slice("/api/photos/".length));
-      if (!handle || !(await handle.exists())) return new Response("nicht gefunden", { status: 404 });
-      return new Response(handle, { headers: { "cache-control": "public, max-age=31536000, immutable" } });
+      if (!handle || !(await handle.exists()))
+        return new Response("nicht gefunden", { status: 404 });
+      return new Response(handle, {
+        headers: { "cache-control": "public, max-age=31536000, immutable" },
+      });
     }
 
     if (pathname === "/api/garden" || pathname === "/api/photos") {
@@ -144,7 +152,11 @@ const server = Bun.serve({
       });
       await Bun.write(
         Bun.file(`${config.stateDir}/diagnose.jsonl`),
-        (await Bun.file(`${config.stateDir}/diagnose.jsonl`).text().catch(() => "")) + zeile + "\n",
+        (await Bun.file(`${config.stateDir}/diagnose.jsonl`)
+          .text()
+          .catch(() => "")) +
+          zeile +
+          "\n",
       );
       return json({ ok: true });
     }
@@ -156,4 +168,6 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Merkbeet-Sync auf http://${config.hostname}:${server.port} (Daten in ${config.stateDir})`);
+console.log(
+  `Merkbeet-Sync auf http://${config.hostname}:${server.port} (Daten in ${config.stateDir})`,
+);

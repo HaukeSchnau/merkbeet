@@ -13,7 +13,11 @@ const change = (partial: PlantChange): PlantChange => partial;
 
 describe("applyChange", () => {
   it("stempelt nur Felder, die sich wirklich ändern", () => {
-    const first = applyChange(undefined, change({ id: "rose-1", fields: { notes: "kränkelt" } }), 100);
+    const first = applyChange(
+      undefined,
+      change({ id: "rose-1", fields: { notes: "kränkelt" } }),
+      100,
+    );
     const again = applyChange(first, change({ id: "rose-1", fields: { notes: "kränkelt" } }), 200);
     // Wichtig: erneutes Schicken desselben Werts darf den Zeitstempel nicht
     // anheben, sonst verdrängt ein Retry fremde neuere Änderungen.
@@ -21,7 +25,11 @@ describe("applyChange", () => {
   });
 
   it("behandelt null als 'Feld leeren'", () => {
-    const set = applyChange(undefined, change({ id: "rose-1", fields: { notes: "weg damit" } }), 100);
+    const set = applyChange(
+      undefined,
+      change({ id: "rose-1", fields: { notes: "weg damit" } }),
+      100,
+    );
     const cleared = applyChange(set, change({ id: "rose-1", fields: { notes: null } }), 200);
     expect(cleared.fields.notes).toEqual({ value: null, at: 200 });
     expect(resolvePlants({ "rose-1": cleared }, SEED)[0].notes).toBeUndefined();
@@ -31,8 +39,16 @@ describe("applyChange", () => {
 describe("mergeRecords", () => {
   it("führt gleichzeitige Änderungen an verschiedenen Feldern derselben Pflanze zusammen", () => {
     // Vater verschiebt die Rose, Mutter schreibt gleichzeitig eine Notiz.
-    const vater = applyChanges({}, [change({ id: "rose-1", fields: { position: { x: 2, y: 3 } } })], 100);
-    const mutter = applyChanges({}, [change({ id: "rose-1", fields: { notes: "blüht zum zweiten Mal" } })], 110);
+    const vater = applyChanges(
+      {},
+      [change({ id: "rose-1", fields: { position: { x: 2, y: 3 } } })],
+      100,
+    );
+    const mutter = applyChanges(
+      {},
+      [change({ id: "rose-1", fields: { notes: "blüht zum zweiten Mal" } })],
+      110,
+    );
 
     const [plant] = resolvePlants(mergeRecords(vater, mutter), SEED);
     expect(plant.position).toEqual({ x: 2, y: 3 });
@@ -49,7 +65,11 @@ describe("mergeRecords", () => {
 
   it("ist kommutativ und assoziativ", () => {
     const a = applyChanges({}, [change({ id: "rose-1", fields: { notes: "a" } })], 100);
-    const b = applyChanges({}, [change({ id: "rose-1", fields: { position: { x: 9, y: 9 } } })], 100);
+    const b = applyChanges(
+      {},
+      [change({ id: "rose-1", fields: { position: { x: 9, y: 9 } } })],
+      100,
+    );
     const c = applyChanges({}, [change({ id: "hydrangea-1", removed: true })], 150);
 
     const links = mergeRecords(mergeRecords(a, b), c);
@@ -92,7 +112,11 @@ describe("entfernen und hinzufügen", () => {
   it("lässt Werte aus dem Plan stehen, die niemand geändert hat", () => {
     // Regression: würden ungesetzte Felder als undefined überschrieben, wäre
     // der Durchmesser aus der Skizze weg.
-    const records = applyChanges({}, [change({ id: "rose-1", fields: { notes: "nur Notiz" } })], 100);
+    const records = applyChanges(
+      {},
+      [change({ id: "rose-1", fields: { notes: "nur Notiz" } })],
+      100,
+    );
     expect(resolvePlants(records, SEED)[0].diameterMeters).toBe(0.9);
   });
 });
@@ -100,7 +124,10 @@ describe("entfernen und hinzufügen", () => {
 describe("coalesceChange", () => {
   it("fasst mehrere Änderungen an einer Pflanze zusammen", () => {
     const erst = coalesceChange(undefined, change({ id: "rose-1", fields: { notes: "eins" } }));
-    const dann = coalesceChange(erst, change({ id: "rose-1", fields: { position: { x: 5, y: 5 } } }));
+    const dann = coalesceChange(
+      erst,
+      change({ id: "rose-1", fields: { position: { x: 5, y: 5 } } }),
+    );
     expect(dann).toEqual({
       id: "rose-1",
       fields: { notes: "eins", position: { x: 5, y: 5 } },
@@ -108,8 +135,14 @@ describe("coalesceChange", () => {
   });
 
   it("behält die Art einer neu angelegten Pflanze über mehrere Änderungen", () => {
-    const angelegt = coalesceChange(undefined, change({ id: "neu-1", speciesId: "rose", fields: { position: { x: 1, y: 1 } } }));
-    const benannt = coalesceChange(angelegt, change({ id: "neu-1", fields: { name: "Omas Rose" } }));
+    const angelegt = coalesceChange(
+      undefined,
+      change({ id: "neu-1", speciesId: "rose", fields: { position: { x: 1, y: 1 } } }),
+    );
+    const benannt = coalesceChange(
+      angelegt,
+      change({ id: "neu-1", fields: { name: "Omas Rose" } }),
+    );
     expect(benannt.speciesId).toBe("rose");
   });
 });
@@ -119,9 +152,17 @@ describe("Zusammenspiel über drei Geräte", () => {
     // Der Server nimmt die Änderungen in der Reihenfolge an, in der sie
     // ankommen, und stempelt sie selbst.
     let server: PlantRecords = {};
-    server = applyChanges(server, [change({ id: "rose-1", fields: { notes: "Handy Vater" } })], 100);
+    server = applyChanges(
+      server,
+      [change({ id: "rose-1", fields: { notes: "Handy Vater" } })],
+      100,
+    );
     server = applyChanges(server, [change({ id: "rose-1", fields: { name: "Kletterrose" } })], 110);
-    server = applyChanges(server, [change({ id: "hydrangea-1", fields: { plantedAt: "2026-05-14" } })], 120);
+    server = applyChanges(
+      server,
+      [change({ id: "hydrangea-1", fields: { plantedAt: "2026-05-14" } })],
+      120,
+    );
 
     // Jedes Gerät hatte einen älteren Stand und schickt seinen Rest nach.
     const handyMutter = mergeRecords({}, server);

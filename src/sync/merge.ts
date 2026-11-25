@@ -1,6 +1,13 @@
 import { GARDEN_PLAN } from "../garden/plan";
 import type { Plant, PlantEdits, PlantId } from "../garden/types";
-import { EDITABLE_FIELDS, type EditableField, type FieldValue, type PlantChange, type PlantRecord, type PlantRecords } from "./types";
+import {
+  EDITABLE_FIELDS,
+  type EditableField,
+  type FieldValue,
+  type PlantChange,
+  type PlantRecord,
+  type PlantRecords,
+} from "./types";
 
 /**
  * Zusammenfuehren von Gartenstaenden.
@@ -23,7 +30,10 @@ const sameValue = (a: FieldValue | undefined, b: FieldValue | undefined): boolea
  * willkuerlich, aber notwendig: ohne festen Ausgang bei Gleichstand koennten
  * zwei Geraete sich endlos gegenseitig ueberschreiben.
  */
-const laterOf = <T extends { at: number; value: unknown }>(a: T | undefined, b: T | undefined): T | undefined => {
+const laterOf = <T extends { at: number; value: unknown }>(
+  a: T | undefined,
+  b: T | undefined,
+): T | undefined => {
   if (!a) return b;
   if (!b) return a;
   if (a.at !== b.at) return a.at > b.at ? a : b;
@@ -68,7 +78,11 @@ export const mergeRecords = (a: PlantRecords, b: PlantRecords): PlantRecords => 
  * sonst wuerde ein blosses Wiederschicken fremde, neuere Aenderungen
  * verdraengen.
  */
-export const applyChange = (record: PlantRecord | undefined, change: PlantChange, at: number): PlantRecord => {
+export const applyChange = (
+  record: PlantRecord | undefined,
+  change: PlantChange,
+  at: number,
+): PlantRecord => {
   const next: PlantRecord = record
     ? { ...record, fields: { ...record.fields } }
     : { id: change.id, fields: {} };
@@ -88,7 +102,11 @@ export const applyChange = (record: PlantRecord | undefined, change: PlantChange
   return next;
 };
 
-export const applyChanges = (records: PlantRecords, changes: PlantChange[], at: number): PlantRecords => {
+export const applyChanges = (
+  records: PlantRecords,
+  changes: PlantChange[],
+  at: number,
+): PlantRecords => {
   const next: PlantRecords = { ...records };
   for (const change of changes) next[change.id] = applyChange(next[change.id], change, at);
   return next;
@@ -126,7 +144,10 @@ const editsOf = (fields: PlantRecord["fields"]): PlantEdits =>
  * Neue Pflanzen ohne Position landen bei (0,0) -- das kommt nicht vor, weil
  * `addPlant` immer eine Position mitgibt, ist aber der harmlose Ausweg.
  */
-export const resolvePlants = (records: PlantRecords, seed: Plant[] = GARDEN_PLAN.plants): Plant[] => {
+export const resolvePlants = (
+  records: PlantRecords,
+  seed: Plant[] = GARDEN_PLAN.plants,
+): Plant[] => {
   const seedIds = new Set(seed.map((plant) => plant.id));
   const plants: Plant[] = [...seed];
 
@@ -146,7 +167,10 @@ export const resolvePlants = (records: PlantRecords, seed: Plant[] = GARDEN_PLAN
 };
 
 /** Fasst mehrere Aenderungen an derselben Pflanze zu einer zusammen. */
-export const coalesceChange = (existing: PlantChange | undefined, change: PlantChange): PlantChange => {
+export const coalesceChange = (
+  existing: PlantChange | undefined,
+  change: PlantChange,
+): PlantChange => {
   const speciesId = existing?.speciesId ?? change.speciesId;
   const removed = change.removed ?? existing?.removed;
   const fields =

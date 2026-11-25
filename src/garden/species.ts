@@ -60,8 +60,9 @@ export type Species = {
  * auf `Species` verbreitert werden -- sonst waeren optionale Felder wie
  * `botanical` an den Eintraegen, die sie nicht setzen, nicht mehr zugreifbar.
  */
-const defineCatalog = <T extends Record<string, Species>>(catalog: T): { [K in keyof T]: Species } =>
-  catalog;
+const defineCatalog = <T extends Record<string, Species>>(
+  catalog: T,
+): { [K in keyof T]: Species } => catalog;
 
 export const SPECIES = defineCatalog({
   rose: {

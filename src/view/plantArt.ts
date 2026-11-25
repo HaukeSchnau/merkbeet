@@ -35,7 +35,9 @@ const fill = (color: string, alpha = 1): SkPaint => {
 };
 
 /** Einheitsform: Oval mit Länge 1 und Breite 1, zentriert. Wird nur skaliert. */
-const UNIT_OVAL: SkPath = Skia.PathBuilder.Make().addOval(Skia.XYWHRect(-0.5, -0.5, 1, 1)).detach();
+const UNIT_OVAL: SkPath = Skia.PathBuilder.Make()
+  .addOval(Skia.XYWHRect(-0.5, -0.5, 1, 1))
+  .detach();
 
 const batch = () => Skia.PathBuilder.Make();
 
@@ -202,7 +204,12 @@ type BloomAdder = (
 const addCluster: BloomAdder = (petals, cores, cx, cy, size, rng) => {
   for (let i = 0; i < 7; i++) {
     const angle = (i / 7) * Math.PI * 2 + rng.range(0, 0.6);
-    addCircle(petals, cx + Math.cos(angle) * size * 0.5, cy + Math.sin(angle) * size * 0.5, size * 0.42);
+    addCircle(
+      petals,
+      cx + Math.cos(angle) * size * 0.5,
+      cy + Math.sin(angle) * size * 0.5,
+      size * 0.42,
+    );
   }
   addCircle(cores, cx, cy, size * 0.45);
 };
@@ -219,7 +226,12 @@ const addRosette: BloomAdder = (petals, cores, cx, cy, size, rng) => {
   const phase = rng.range(0, Math.PI);
   for (let i = 0; i < 5; i++) {
     const angle = phase + (i / 5) * Math.PI * 2;
-    addCircle(petals, cx + Math.cos(angle) * size * 0.42, cy + Math.sin(angle) * size * 0.42, size * 0.46);
+    addCircle(
+      petals,
+      cx + Math.cos(angle) * size * 0.42,
+      cy + Math.sin(angle) * size * 0.42,
+      size * 0.46,
+    );
   }
   addCircle(cores, cx, cy, size * 0.36);
 };
@@ -251,7 +263,10 @@ const addStarBloom: BloomAdder = (petals, cores, cx, cy, size, rng) => {
   addCircle(cores, cx, cy, size * 0.18);
 };
 
-const BLOOMS: Record<Exclude<BloomStyle, "none">, { add: BloomAdder; count: number; size: number }> = {
+const BLOOMS: Record<
+  Exclude<BloomStyle, "none">,
+  { add: BloomAdder; count: number; size: number }
+> = {
   cluster: { add: addCluster, count: 6, size: 0.28 },
   spike: { add: addSpike, count: 8, size: 0.24 },
   rosette: { add: addRosette, count: 5, size: 0.3 },
@@ -259,7 +274,13 @@ const BLOOMS: Record<Exclude<BloomStyle, "none">, { add: BloomAdder; count: numb
   star: { add: addStarBloom, count: 7, size: 0.26 },
 };
 
-const drawBlooms = (canvas: SkCanvas, radius: number, style: BloomStyle, palette: PlantPalette, rng: Rng) => {
+const drawBlooms = (
+  canvas: SkCanvas,
+  radius: number,
+  style: BloomStyle,
+  palette: PlantPalette,
+  rng: Rng,
+) => {
   if (style === "none" || !palette.bloom) return;
   const spec = BLOOMS[style];
   const petals = batch();
@@ -322,7 +343,11 @@ const drawShadow = (canvas: SkCanvas, radius: number) => {
  * Baut das Bild einer Pflanze. `seed` sollte die Pflanzen-id sein, damit
  * dieselbe Pflanze immer gleich aussieht.
  */
-export const createPlantPicture = (species: Species, diameterMeters: number, seed: string): SkPicture => {
+export const createPlantPicture = (
+  species: Species,
+  diameterMeters: number,
+  seed: string,
+): SkPicture => {
   const radius = diameterMeters / 2;
   const rng = makeRng(seed);
   return createPicture(

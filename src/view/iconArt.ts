@@ -55,7 +55,12 @@ const drawSoil = (canvas: SkCanvas) => {
   const rng = makeRng("icon:soil");
   for (let i = 0; i < 22; i++) {
     canvas.drawOval(
-      Skia.XYWHRect(rng.range(-0.1, 1), rng.range(-0.1, 1), rng.range(0.12, 0.34), rng.range(0.08, 0.2)),
+      Skia.XYWHRect(
+        rng.range(-0.1, 1),
+        rng.range(-0.1, 1),
+        rng.range(0.12, 0.34),
+        rng.range(0.08, 0.2),
+      ),
       fill(rng.next() > 0.5 ? MATERIAL.soil.dark : MATERIAL.soil.light, 0.34),
     );
   }

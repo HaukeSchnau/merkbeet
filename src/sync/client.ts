@@ -37,11 +37,16 @@ const request = async <T>(
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
-    if (response.status === 401 || response.status === 429) return { ok: false, failure: { kind: "unauthorized" } };
+    if (response.status === 401 || response.status === 429)
+      return { ok: false, failure: { kind: "unauthorized" } };
     if (!response.ok) {
       return {
         ok: false,
-        failure: { kind: "rejected", status: response.status, message: await response.text().catch(() => "") },
+        failure: {
+          kind: "rejected",
+          status: response.status,
+          message: await response.text().catch(() => ""),
+        },
       };
     }
     return { ok: true, value: (await response.json()) as T };
@@ -56,7 +61,10 @@ export const pullGarden = (passcode: string, revision: number): Promise<SyncResu
   request<PullResult>(passcode, `/api/garden?revision=${revision}`);
 
 /** Schickt Änderungen und bekommt den zusammengeführten Gesamtstand zurück. */
-export const pushGarden = (passcode: string, changes: PlantChange[]): Promise<SyncResult<GardenSnapshot>> =>
+export const pushGarden = (
+  passcode: string,
+  changes: PlantChange[],
+): Promise<SyncResult<GardenSnapshot>> =>
   request<GardenSnapshot>(passcode, "/api/garden", {
     method: "POST",
     headers: { "content-type": "application/json" },

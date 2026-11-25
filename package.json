@@ -1,7 +1,22 @@
 {
   "name": "merkbeet",
   "version": "1.0.0",
+  "private": true,
   "main": "index.ts",
+  "scripts": {
+    "start": "pnpm exec expo start",
+    "android": "pnpm exec expo start --android",
+    "ios": "pnpm exec expo start --ios",
+    "web": "pnpm exec expo start --web",
+    "preview": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/render.ts",
+    "build:web": "pnpm exec expo export --platform web --output-dir dist",
+    "server": "bun server/index.ts",
+    "test": "vp test run",
+    "setup:web": "pnpm exec setup-skia-web public",
+    "icons": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/icons.ts",
+    "bench": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/bench.ts",
+    "check": "vp check"
+  },
   "dependencies": {
     "@expo-google-fonts/nunito": "^0.4.2",
     "@expo/metro-runtime": "57.0.12",
@@ -33,26 +48,11 @@
     "tsrs": "7.1.0-beta.tsrs4",
     "vite-plus": "catalog:"
   },
-  "scripts": {
-    "start": "pnpm exec expo start",
-    "android": "pnpm exec expo start --android",
-    "ios": "pnpm exec expo start --ios",
-    "web": "pnpm exec expo start --web",
-    "preview": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/render.ts",
-    "build:web": "pnpm exec expo export --platform web --output-dir dist",
-    "server": "bun server/index.ts",
-    "test": "vp test run",
-    "setup:web": "pnpm exec setup-skia-web public",
-    "icons": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/icons.ts",
-    "bench": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/bench.ts",
-    "check": "vp check"
-  },
-  "private": true,
-  "trustedDependencies": [
-    "@shopify/react-native-skia"
-  ],
-  "packageManager": "pnpm@12.9.0",
   "engines": {
     "node": ">=26"
-  }
+  },
+  "packageManager": "pnpm@12.9.0",
+  "trustedDependencies": [
+    "@shopify/react-native-skia"
+  ]
 }

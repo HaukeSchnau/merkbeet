@@ -32,12 +32,16 @@ export class GardenStore {
   }
 
   private revision(): number {
-    const row = this.db.query<{ value: string }, []>("SELECT value FROM meta WHERE key = 'revision'").get();
+    const row = this.db
+      .query<{ value: string }, []>("SELECT value FROM meta WHERE key = 'revision'")
+      .get();
     return row ? Number(row.value) : 0;
   }
 
   private records(): PlantRecords {
-    const rows = this.db.query<{ id: string; doc: string }, []>("SELECT id, doc FROM records").all();
+    const rows = this.db
+      .query<{ id: string; doc: string }, []>("SELECT id, doc FROM records")
+      .all();
     const records: PlantRecords = {};
     for (const row of rows) records[row.id] = JSON.parse(row.doc) as PlantRecord;
     return records;
@@ -61,7 +65,9 @@ export class GardenStore {
     const write = this.db.transaction((at: number) => {
       const touched = new Set(changes.map((change) => change.id));
       const current: PlantRecords = {};
-      const select = this.db.query<{ doc: string }, [string]>("SELECT doc FROM records WHERE id = ?");
+      const select = this.db.query<{ doc: string }, [string]>(
+        "SELECT doc FROM records WHERE id = ?",
+      );
       for (const id of touched) {
         const row = select.get(id);
         if (row) current[id] = JSON.parse(row.doc) as PlantRecord;

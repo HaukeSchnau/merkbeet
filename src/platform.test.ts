@@ -36,7 +36,9 @@ describe("Plattform-Annahmen", () => {
   it("greift nirgends über window auf Browser-Dinge zu", () => {
     const treffer = quellen
       .filter(({ pfad }) => !nurWeb(pfad))
-      .filter(({ inhalt }) => /\bwindow\.(location|matchMedia|innerWidth|innerHeight|devicePixelRatio)/.test(inhalt))
+      .filter(({ inhalt }) =>
+        /\bwindow\.(location|matchMedia|innerWidth|innerHeight|devicePixelRatio)/.test(inhalt),
+      )
       .map(({ pfad }) => pfad);
     expect(treffer).toEqual([]);
   });

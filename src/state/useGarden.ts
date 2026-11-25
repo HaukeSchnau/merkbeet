@@ -99,7 +99,10 @@ export const useGarden = (): Garden => {
       const sent = gardenRef.current.pending;
       const changes = Object.values(sent);
 
-      const result = changes.length > 0 ? await pushGarden(code, changes) : await pullGarden(code, gardenRef.current.revision);
+      const result =
+        changes.length > 0
+          ? await pushGarden(code, changes)
+          : await pullGarden(code, gardenRef.current.revision);
       if (!result.ok) {
         setState(failureState(result.failure));
         return;
@@ -115,7 +118,12 @@ export const useGarden = (): Garden => {
         if (isUnchanged(result.value)) {
           return { ...previous, revision: result.value.revision, pending };
         }
-        return { version: 2, revision: result.value.revision, records: result.value.records, pending };
+        return {
+          version: 2,
+          revision: result.value.revision,
+          records: result.value.records,
+          pending,
+        };
       });
       setLastSyncedAt(Date.now());
       setState("synced");
@@ -149,7 +157,10 @@ export const useGarden = (): Garden => {
   const queue = useCallback((change: PlantChange) => {
     setGarden((previous) => ({
       ...previous,
-      pending: { ...previous.pending, [change.id]: coalesceChange(previous.pending[change.id], change) },
+      pending: {
+        ...previous.pending,
+        [change.id]: coalesceChange(previous.pending[change.id], change),
+      },
     }));
   }, []);
 
@@ -165,7 +176,10 @@ export const useGarden = (): Garden => {
     [queue],
   );
 
-  const movePlant = useCallback((id: PlantId, position: Point) => queue({ id, fields: { position } }), [queue]);
+  const movePlant = useCallback(
+    (id: PlantId, position: Point) => queue({ id, fields: { position } }),
+    [queue],
+  );
 
   const addPlant = useCallback(
     (speciesId: SpeciesId, position: Point): PlantId => {
@@ -179,14 +193,11 @@ export const useGarden = (): Garden => {
 
   const removePlant = useCallback((id: PlantId) => queue({ id, removed: true }), [queue]);
 
-  const setPasscode = useCallback(
-    (next: string) => {
-      setPasscodeState(next);
-      setState("startup");
-      void savePasscode(next);
-    },
-    [],
-  );
+  const setPasscode = useCallback((next: string) => {
+    setPasscodeState(next);
+    setState("startup");
+    void savePasscode(next);
+  }, []);
 
   const signOut = useCallback(() => {
     setPasscodeState(null);

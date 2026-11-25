@@ -216,7 +216,10 @@ const drawHouse = (canvas: SkCanvas, path: SkPath, rect: Rect) => {
     for (let y = rect.y; y < rect.y + rect.height; y += 1.1) {
       addSegment(bands, rect.x, y, rect.x + rect.width, y);
     }
-    canvas.drawPath(bands.detach(), stroke(over(MATERIAL.house.base, MATERIAL.house.roof, 0.5), 0.06));
+    canvas.drawPath(
+      bands.detach(),
+      stroke(over(MATERIAL.house.base, MATERIAL.house.roof, 0.5), 0.06),
+    );
   });
 };
 
@@ -246,7 +249,10 @@ const drawTerrace = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng) => {
     for (let y = rect.y; y <= rect.y + rect.height + 0.001; y += tile) {
       addSegment(joints, rect.x, y, rect.x + rect.width, y);
     }
-    canvas.drawPath(joints.detach(), stroke(over(MATERIAL.terrace.base, MATERIAL.terrace.joint, 0.75), 0.022));
+    canvas.drawPath(
+      joints.detach(),
+      stroke(over(MATERIAL.terrace.base, MATERIAL.terrace.joint, 0.75), 0.022),
+    );
   }
 };
 
@@ -279,25 +285,39 @@ const drawBed = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng, outline: 
     // Bewusst dünner und etwas größer: bei starkem Zoom waren die Körner ein
     // bis drei Pixel groß, also kaum mehr als Rauschen -- kosteten aber den
     // größten Teil der Texturzeit.
-    scatterInside(tile, count(4), rng, outline, (x, y) => {
-      const r = rng.range(0.015, 0.032);
-      addOval(grit, x, y, r, r);
-    }, 0.04);
+    scatterInside(
+      tile,
+      count(4),
+      rng,
+      outline,
+      (x, y) => {
+        const r = rng.range(0.015, 0.032);
+        addOval(grit, x, y, r, r);
+      },
+      0.04,
+    );
     canvas.drawPath(grit.detach(), gritPaint);
 
     // Mulch als kurze dicke Striche: als Pfad billiger als gedrehte Ovale.
     const mulch = batch();
-    scatterInside(tile, count(1.6), rng, outline, (x, y) => {
-      const angle = rng.range(0, Math.PI);
-      const half = 0.045;
-      addSegment(
-        mulch,
-        x - Math.cos(angle) * half,
-        y - Math.sin(angle) * half,
-        x + Math.cos(angle) * half,
-        y + Math.sin(angle) * half,
-      );
-    }, 0.07);
+    scatterInside(
+      tile,
+      count(1.6),
+      rng,
+      outline,
+      (x, y) => {
+        const angle = rng.range(0, Math.PI);
+        const half = 0.045;
+        addSegment(
+          mulch,
+          x - Math.cos(angle) * half,
+          y - Math.sin(angle) * half,
+          x + Math.cos(angle) * half,
+          y + Math.sin(angle) * half,
+        );
+      },
+      0.07,
+    );
     canvas.drawPath(mulch.detach(), mulchPaint);
   });
   void path;
@@ -325,7 +345,12 @@ const drawWallShadow = (canvas: SkCanvas, bedRight: number, bedBottom: number) =
     const cumulative = 1 - (1 - perStep) ** (i + 1);
     const bands = batch();
     bands.addRect(
-      Skia.XYWHRect(WEST_WALL_X, SOUTH_WALL_Y, bedRight - WEST_WALL_X, Math.min(depth, bedBottom - SOUTH_WALL_Y)),
+      Skia.XYWHRect(
+        WEST_WALL_X,
+        SOUTH_WALL_Y,
+        bedRight - WEST_WALL_X,
+        Math.min(depth, bedBottom - SOUTH_WALL_Y),
+      ),
     );
     bands.addRect(Skia.XYWHRect(WEST_WALL_X - depth, 0, depth, SOUTH_WALL_Y));
     canvas.drawPath(bands.detach(), fill(over(MATERIAL.soil.base, "#1c2a16", cumulative)));
@@ -440,7 +465,13 @@ export const createGroundTexturePicture = (): SkPicture => {
       for (const area of areas) {
         const path = pathOf(area);
         canvas.drawPath(path, fill(BASE_COLOR[area.kind]));
-        DRAWERS[area.kind](canvas, path, boundsOf(area), makeRng(`ground:${area.id}`), area.outline);
+        DRAWERS[area.kind](
+          canvas,
+          path,
+          boundsOf(area),
+          makeRng(`ground:${area.id}`),
+          area.outline,
+        );
         drawAreaEdge(canvas, area, path);
       }
       void bed;

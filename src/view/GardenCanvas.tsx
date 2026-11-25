@@ -60,7 +60,8 @@ type DragState = {
   dy: SharedValue<number>;
 };
 
-const diameterOf = (plant: Plant, species: Species) => plant.diameterMeters ?? species.defaultDiameterMeters;
+const diameterOf = (plant: Plant, species: Species) =>
+  plant.diameterMeters ?? species.defaultDiameterMeters;
 
 /** Bild einer Pflanze, zwischengespeichert -- es haengt nur an Art und Groesse. */
 const usePlantPictures = (plants: Plant[]): Map<PlantId, SkPicture> =>
@@ -140,7 +141,13 @@ const Compass = ({ screen, font }: { screen: Screen; font: SkFont | null }) => {
       <Circle cx={cx} cy={cy} r={20} color={colors.labelBackground} />
       <Path path={needle} color={colors.accent} />
       {font ? (
-        <Text x={cx - textWidth(font, "N") / 2} y={cy + 18} text="N" font={font} color={colors.labelText} />
+        <Text
+          x={cx - textWidth(font, "N") / 2}
+          y={cy + 18}
+          text="N"
+          font={font}
+          color={colors.labelText}
+        />
       ) : null}
     </Group>
   );
@@ -227,27 +234,35 @@ export const GardenCanvas = ({
    */
   const restingPlants = useMemo(
     () =>
-      createPicture((canvas) => {
-        for (const plant of ordered) {
-          if (plant.id === draggedId) continue;
-          const picture = plantPictures.get(plant.id);
-          if (!picture) continue;
-          canvas.save();
-          canvas.translate(plant.position.x, plant.position.y);
-          canvas.drawPicture(picture);
-          canvas.restore();
-        }
-      }, Skia.XYWHRect(GARDEN_PLAN.bounds.x, GARDEN_PLAN.bounds.y, GARDEN_PLAN.bounds.width, GARDEN_PLAN.bounds.height)),
+      createPicture(
+        (canvas) => {
+          for (const plant of ordered) {
+            if (plant.id === draggedId) continue;
+            const picture = plantPictures.get(plant.id);
+            if (!picture) continue;
+            canvas.save();
+            canvas.translate(plant.position.x, plant.position.y);
+            canvas.drawPicture(picture);
+            canvas.restore();
+          }
+        },
+        Skia.XYWHRect(
+          GARDEN_PLAN.bounds.x,
+          GARDEN_PLAN.bounds.y,
+          GARDEN_PLAN.bounds.width,
+          GARDEN_PLAN.bounds.height,
+        ),
+      ),
     [ordered, draggedId, plantPictures],
   );
 
-  const draggedPlant = draggedId ? plants.find((plant) => plant.id === draggedId) ?? null : null;
+  const draggedPlant = draggedId ? (plants.find((plant) => plant.id === draggedId) ?? null) : null;
   const draggedTransform = useDerivedValue(() => [
     { translateX: dragBase.x.value + drag.dx.value / viewport.scale.value },
     { translateY: dragBase.y.value + drag.dy.value / viewport.scale.value },
   ]);
 
-  const selected = selectedId ? plants.find((plant) => plant.id === selectedId) ?? null : null;
+  const selected = selectedId ? (plants.find((plant) => plant.id === selectedId) ?? null) : null;
   const selectionRadius = selected
     ? diameterOf(selected, speciesOf(selected.speciesId)) / 2 + 0.14
     : 0;
@@ -365,8 +380,20 @@ export const GardenCanvas = ({
 
     const clamp = () => {
       "worklet";
-      viewport.tx.value = clampTranslation(viewport.tx.value, viewport.scale.value, bounds.x, bounds.width, screen.width);
-      viewport.ty.value = clampTranslation(viewport.ty.value, viewport.scale.value, bounds.y, bounds.height, screen.height);
+      viewport.tx.value = clampTranslation(
+        viewport.tx.value,
+        viewport.scale.value,
+        bounds.x,
+        bounds.width,
+        screen.width,
+      );
+      viewport.ty.value = clampTranslation(
+        viewport.ty.value,
+        viewport.scale.value,
+        bounds.y,
+        bounds.height,
+        screen.height,
+      );
     };
 
     const pan = Gesture.Pan()

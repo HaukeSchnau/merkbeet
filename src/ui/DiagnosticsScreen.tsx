@@ -33,7 +33,8 @@ const webglBefunde = (): Befund[] => {
       const ctx = leinwand.getContext(art);
       if (!ctx) return "kein Kontext";
       const info = ctx as { getParameter?: (p: number) => unknown; VERSION?: number };
-      const version = info.getParameter && info.VERSION ? String(info.getParameter(info.VERSION)) : "ok";
+      const version =
+        info.getParameter && info.VERSION ? String(info.getParameter(info.VERSION)) : "ok";
       return version.slice(0, 60);
     } catch (fehler) {
       return `Fehler: ${String(fehler).slice(0, 60)}`;
@@ -71,10 +72,15 @@ const umgebung = (): Befund[] => {
           ? String((nav as { standalone?: boolean } | null)?.standalone ?? "?")
           : "nativ",
     },
-    { name: "Kerne", wert: String((nav as { hardwareConcurrency?: number } | null)?.hardwareConcurrency ?? "?") },
+    {
+      name: "Kerne",
+      wert: String((nav as { hardwareConcurrency?: number } | null)?.hardwareConcurrency ?? "?"),
+    },
     {
       name: "AbortSignal.timeout",
-      wert: String(typeof (globalThis as { AbortSignal?: { timeout?: unknown } }).AbortSignal?.timeout),
+      wert: String(
+        typeof (globalThis as { AbortSignal?: { timeout?: unknown } }).AbortSignal?.timeout,
+      ),
     },
   ];
 };

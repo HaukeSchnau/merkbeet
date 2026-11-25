@@ -29,7 +29,9 @@ const parse = (hex: string): [number, number, number] => {
 };
 
 const toHex = (channel: number): string =>
-  Math.max(0, Math.min(255, Math.round(channel))).toString(16).padStart(2, "0");
+  Math.max(0, Math.min(255, Math.round(channel)))
+    .toString(16)
+    .padStart(2, "0");
 
 /** `color` mit `alpha` über `base` gelegt, als deckende Farbe. */
 export const over = (base: string, color: string, alpha: number): string => {

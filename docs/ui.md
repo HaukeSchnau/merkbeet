@@ -10,12 +10,12 @@ Nur die Wurzel eines solchen Teilbaums braucht einen `Host`. Über
 Material-3-Palette ab, sodass Schalter und Knöpfe Merkbeets Terrakotta tragen
 statt Expo-Blau.
 
-| Fläche | Komponenten |
-| --- | --- |
-| Kopfzeile | `Switch` für Etiketten, `Button` für den Bearbeiten-Modus |
-| Zugangscode | `TextInput` (mit Systemtastatur), `Button` |
+| Fläche        | Komponenten                                                       |
+| ------------- | ----------------------------------------------------------------- |
+| Kopfzeile     | `Switch` für Etiketten, `Button` für den Bearbeiten-Modus         |
+| Zugangscode   | `TextInput` (mit Systemtastatur), `Button`                        |
 | Pflanzenkarte | `BottomSheet` mit `FieldGroup`-Abschnitten, `TextInput`, `Slider` |
-| Artenauswahl | `BottomSheet` mit `List` und `ListItem` |
+| Artenauswahl  | `BottomSheet` mit `List` und `ListItem`                           |
 
 Der Plan selbst bleibt Skia — dort geht es um freies Zeichnen, nicht um
 Bedienelemente.

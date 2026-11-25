@@ -20,7 +20,9 @@ const OUT_DIR = new URL("../../docs/preview/", import.meta.url);
 
 const loadFont = async (sizeInUnits: number) => {
   const bytes = new Uint8Array(
-    await Bun.file("node_modules/@expo-google-fonts/nunito/700Bold/Nunito_700Bold.ttf").arrayBuffer(),
+    await Bun.file(
+      "node_modules/@expo-google-fonts/nunito/700Bold/Nunito_700Bold.ttf",
+    ).arrayBuffer(),
   );
   const typeface = Skia.Typeface.MakeFreeTypeFaceFromData(Skia.Data.fromBytes(bytes));
   if (!typeface) throw new Error("Schrift konnte nicht geladen werden");
@@ -128,11 +130,14 @@ const renderSpeciesSheet = async () => {
         const cy = Math.floor(index / columns) * cell + cell / 2 - 0.15;
         canvas.save();
         canvas.translate(cx, cy);
-        canvas.drawPicture(createPlantPicture(species, Math.min(species.defaultDiameterMeters, 2.0), id));
+        canvas.drawPicture(
+          createPlantPicture(species, Math.min(species.defaultDiameterMeters, 2.0), id),
+        );
         canvas.restore();
         const scale = 0.22 / labelFont.getSize();
         const width =
-          labelFont.getGlyphWidths(labelFont.getGlyphIDs(species.name)).reduce((a, b) => a + b, 0) * scale;
+          labelFont.getGlyphWidths(labelFont.getGlyphIDs(species.name)).reduce((a, b) => a + b, 0) *
+          scale;
         canvas.save();
         canvas.translate(cx - width / 2, cy + cell / 2 - 0.1);
         canvas.scale(scale, scale);

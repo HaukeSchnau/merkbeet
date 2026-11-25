@@ -10,7 +10,8 @@ import { Platform } from "react-native";
  * Vorschau-Version auf den echten Server zeigen zu lassen.
  */
 export const SERVER_BASE =
-  process.env.EXPO_PUBLIC_MERKBEET_SERVER ?? (Platform.OS === "web" ? "" : "https://merkbeet.schnau.dev");
+  process.env.EXPO_PUBLIC_MERKBEET_SERVER ??
+  (Platform.OS === "web" ? "" : "https://merkbeet.schnau.dev");
 
 /** Macht aus dem synchronisierten `photoUri` eine ladbare Adresse. */
 export const resolvePhotoUri = (photoUri: string): string =>

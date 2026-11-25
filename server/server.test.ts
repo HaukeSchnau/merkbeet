@@ -34,7 +34,11 @@ const serverEnv = () => ({
 const api = (path: string, init: RequestInit = {}) =>
   fetch(`${base}${path}`, {
     ...init,
-    headers: { authorization: `Bearer ${PASSCODE}`, "content-type": "application/json", ...init.headers },
+    headers: {
+      authorization: `Bearer ${PASSCODE}`,
+      "content-type": "application/json",
+      ...init.headers,
+    },
   });
 
 const push = async (changes: PlantChange[]): Promise<GardenSnapshot> => {
@@ -76,7 +80,9 @@ describe("Zugang", () => {
   });
 
   it("weist einen falschen Code ab", async () => {
-    const response = await fetch(`${base}/api/garden`, { headers: { authorization: "Bearer falsch" } });
+    const response = await fetch(`${base}/api/garden`, {
+      headers: { authorization: "Bearer falsch" },
+    });
     expect(response.status).toBe(401);
   });
 
@@ -144,7 +150,8 @@ describe("Sync", () => {
 
   it("nimmt ein Foto an und liefert es wieder aus", async () => {
     const png = Buffer.from(
-      "89504e470d0a1a0a0000000d494844520000000100000001080600000" + "01f15c4890000000a49444154789c6300010000050001".padEnd(46, "0"),
+      "89504e470d0a1a0a0000000d494844520000000100000001080600000" +
+        "01f15c4890000000a49444154789c6300010000050001".padEnd(46, "0"),
       "hex",
     );
     const upload = await fetch(`${base}/api/photos`, {

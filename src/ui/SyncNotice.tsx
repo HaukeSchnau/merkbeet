@@ -17,10 +17,7 @@ const beschreibe = (status: SyncStatus): { text: string; erneut: boolean } | nul
   if (status.state === "unauthorized") return { text: "Zugangscode nötig", erneut: false };
   if (status.state === "offline") {
     return {
-      text:
-        status.pendingCount > 0
-          ? `Offline · ${status.pendingCount} nicht gesendet`
-          : "Offline",
+      text: status.pendingCount > 0 ? `Offline · ${status.pendingCount} nicht gesendet` : "Offline",
       erneut: true,
     };
   }
