@@ -44,7 +44,9 @@ const fill = (color: string, alpha = 1): SkPaint => {
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
   paint.setColor(Skia.Color(color));
+
   if (alpha < 1) paint.setAlphaf(alpha);
+
   return paint;
 };
 
@@ -53,6 +55,7 @@ const stroke = (color: string, width: number, alpha = 1): SkPaint => {
   paint.setStyle(PaintStyle.Stroke);
   paint.setStrokeWidth(width);
   paint.setStrokeCap(StrokeCap.Round);
+
   return paint;
 };
 
@@ -64,6 +67,7 @@ const boundsOf = (area: GardenArea): Rect => {
   const ys = area.outline.map((p) => p.y);
   const x = Math.min(...xs);
   const y = Math.min(...ys);
+
   return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
 };
 
@@ -83,13 +87,18 @@ const withinArea = (canvas: SkCanvas, path: SkPath, draw: () => void) => {
 /** Strahlenschnitt-Test, ob ein Punkt im Umriss liegt. */
 const insideOutline = (x: number, y: number, outline: Point[]): boolean => {
   let inside = false;
-  for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
-    const a = outline[i];
-    const b = outline[j];
-    if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) {
+
+  // Jede Kante läuft vom vorigen Punkt zum aktuellen, die erste vom letzten Punkt aus.
+  let b = outline.at(-1);
+
+  for (const a of outline) {
+    if (b && a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) {
       inside = !inside;
     }
+
+    b = a;
   }
+
   return inside;
 };
 
@@ -113,7 +122,9 @@ const scatterInside = (
 ) => {
   const fits = (x: number, y: number): boolean => {
     if (!insideOutline(x, y, outline)) return false;
+
     if (margin === 0) return true;
+
     return (
       insideOutline(x - margin, y - margin, outline) &&
       insideOutline(x + margin, y - margin, outline) &&
@@ -123,10 +134,12 @@ const scatterInside = (
   };
 
   let placed = 0;
+
   // Obergrenze, damit eine schlecht getroffene Kachel die Aufzeichnung nicht anhält.
   for (let attempt = 0; attempt < count * 8 && placed < count; attempt++) {
     const x = rng.range(rect.x, rect.x + rect.width);
     const y = rng.range(rect.y, rect.y + rect.height);
+
     if (!fits(x, y)) continue;
     place(x, y);
     placed++;
@@ -170,10 +183,12 @@ const perTile = (
         width: Math.min(TILE, rect.x + rect.width - x),
         height: Math.min(TILE, rect.y + rect.height - y),
       };
+
       const area = tile.width * tile.height;
       draw(tile, (density) => Math.max(1, Math.round(area * density)));
     }
   }
+
   void rng;
 };
 
@@ -188,7 +203,7 @@ const addOval = (b: SkPathBuilder, cx: number, cy: number, rx: number, ry: numbe
   b.addOval(Skia.XYWHRect(cx - rx, cy - ry, rx * 2, ry * 2));
 };
 
-const drawLawn = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng) => {
+const drawLawn = (canvas: SkCanvas, _path: SkPath, rect: Rect, rng: Rng) => {
   // Ohne Clip: der Rasen ist die unterste Schicht und deckt die ganze Fläche ab,
   // alles Weitere wird darüber gezeichnet.
   const patches = batch();
@@ -213,14 +228,19 @@ const drawHouse = (canvas: SkCanvas, path: SkPath, rect: Rect) => {
   withinArea(canvas, path, () => {
     // Angedeutetes Dach: Bahnen parallel zur Traufe, alle in einem Pfad.
     const bands = batch();
+
     for (let y = rect.y; y < rect.y + rect.height; y += 1.1) {
       addSegment(bands, rect.x, y, rect.x + rect.width, y);
     }
-    canvas.drawPath(bands.detach(), stroke(over(MATERIAL.house.base, MATERIAL.house.roof, 0.5), 0.06));
+
+    canvas.drawPath(
+      bands.detach(),
+      stroke(over(MATERIAL.house.base, MATERIAL.house.roof, 0.5), 0.06),
+    );
   });
 };
 
-const drawTerrace = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng) => {
+const drawTerrace = (canvas: SkCanvas, _path: SkPath, rect: Rect, rng: Rng) => {
   // Die Terrasse ist ein Rechteck; die Plattenraster passen exakt hinein,
   // ein Clip wäre nur Kosten.
   {
@@ -229,24 +249,33 @@ const drawTerrace = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng) => {
     // Helligkeitsstufen, damit es bei einem Pfad pro Stufe bleibt.
     const light = batch();
     const dark = batch();
+
     for (let x = rect.x; x < rect.x + rect.width; x += tile) {
       for (let y = rect.y; y < rect.y + rect.height; y += tile) {
         const roll = rng.next();
+
         if (roll > 0.72) light.addRect(Skia.XYWHRect(x, y, tile, tile));
         else if (roll > 0.45) dark.addRect(Skia.XYWHRect(x, y, tile, tile));
       }
     }
+
     canvas.drawPath(light.detach(), fill(over(MATERIAL.terrace.base, MATERIAL.terrace.tint, 0.4)));
     canvas.drawPath(dark.detach(), fill(over(MATERIAL.terrace.base, MATERIAL.terrace.tint, 0.18)));
 
     const joints = batch();
+
     for (let x = rect.x; x <= rect.x + rect.width + 0.001; x += tile) {
       addSegment(joints, x, rect.y, x, rect.y + rect.height);
     }
+
     for (let y = rect.y; y <= rect.y + rect.height + 0.001; y += tile) {
       addSegment(joints, rect.x, y, rect.x + rect.width, y);
     }
-    canvas.drawPath(joints.detach(), stroke(over(MATERIAL.terrace.base, MATERIAL.terrace.joint, 0.75), 0.022));
+
+    canvas.drawPath(
+      joints.detach(),
+      stroke(over(MATERIAL.terrace.base, MATERIAL.terrace.joint, 0.75), 0.022),
+    );
   }
 };
 
@@ -279,25 +308,39 @@ const drawBed = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng, outline: 
     // Bewusst dünner und etwas größer: bei starkem Zoom waren die Körner ein
     // bis drei Pixel groß, also kaum mehr als Rauschen -- kosteten aber den
     // größten Teil der Texturzeit.
-    scatterInside(tile, count(4), rng, outline, (x, y) => {
-      const r = rng.range(0.015, 0.032);
-      addOval(grit, x, y, r, r);
-    }, 0.04);
+    scatterInside(
+      tile,
+      count(4),
+      rng,
+      outline,
+      (x, y) => {
+        const r = rng.range(0.015, 0.032);
+        addOval(grit, x, y, r, r);
+      },
+      0.04,
+    );
     canvas.drawPath(grit.detach(), gritPaint);
 
     // Mulch als kurze dicke Striche: als Pfad billiger als gedrehte Ovale.
     const mulch = batch();
-    scatterInside(tile, count(1.6), rng, outline, (x, y) => {
-      const angle = rng.range(0, Math.PI);
-      const half = 0.045;
-      addSegment(
-        mulch,
-        x - Math.cos(angle) * half,
-        y - Math.sin(angle) * half,
-        x + Math.cos(angle) * half,
-        y + Math.sin(angle) * half,
-      );
-    }, 0.07);
+    scatterInside(
+      tile,
+      count(1.6),
+      rng,
+      outline,
+      (x, y) => {
+        const angle = rng.range(0, Math.PI);
+        const half = 0.045;
+        addSegment(
+          mulch,
+          x - Math.cos(angle) * half,
+          y - Math.sin(angle) * half,
+          x + Math.cos(angle) * half,
+          y + Math.sin(angle) * half,
+        );
+      },
+      0.07,
+    );
     canvas.drawPath(mulch.detach(), mulchPaint);
   });
   void path;
@@ -318,6 +361,7 @@ const drawBed = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng, outline: 
 const drawWallShadow = (canvas: SkCanvas, bedRight: number, bedBottom: number) => {
   const steps = 5;
   const perStep = 0.05;
+
   for (let i = 0; i < steps; i++) {
     const depth = 0.5 * (1 - i / steps);
     // Ein Punkt in diesem Band liegt unter i+1 Bändern; das ist die Deckung,
@@ -325,7 +369,12 @@ const drawWallShadow = (canvas: SkCanvas, bedRight: number, bedBottom: number) =
     const cumulative = 1 - (1 - perStep) ** (i + 1);
     const bands = batch();
     bands.addRect(
-      Skia.XYWHRect(WEST_WALL_X, SOUTH_WALL_Y, bedRight - WEST_WALL_X, Math.min(depth, bedBottom - SOUTH_WALL_Y)),
+      Skia.XYWHRect(
+        WEST_WALL_X,
+        SOUTH_WALL_Y,
+        bedRight - WEST_WALL_X,
+        Math.min(depth, bedBottom - SOUTH_WALL_Y),
+      ),
     );
     bands.addRect(Skia.XYWHRect(WEST_WALL_X - depth, 0, depth, SOUTH_WALL_Y));
     canvas.drawPath(bands.detach(), fill(over(MATERIAL.soil.base, "#1c2a16", cumulative)));
@@ -367,9 +416,11 @@ const drawScaleBar = (canvas: SkCanvas, font: SkFont, x: number, y: number) => {
   const height = 0.16;
   const dark = batch();
   const light = batch();
+
   for (let i = 0; i < meters; i++) {
     (i % 2 === 0 ? dark : light).addRect(Skia.XYWHRect(x + i, y, 1, height));
   }
+
   canvas.drawPath(dark.detach(), fill("#3f3a33", 0.85));
   canvas.drawPath(light.detach(), fill("#f4f1e8", 0.85));
   canvas.drawRect(Skia.XYWHRect(x, y, meters, height), stroke("#3f3a33", 0.02, 0.85));
@@ -403,7 +454,9 @@ const DRAWERS: Record<
 /** Umriss und Kante einer Fläche, soweit sie eine hat. */
 const drawAreaEdge = (canvas: SkCanvas, area: GardenArea, path: SkPath) => {
   if (area.kind === "house") canvas.drawPath(path, stroke(MATERIAL.house.edge, 0.09));
+
   if (area.kind === "terrace") canvas.drawPath(path, stroke(MATERIAL.terrace.joint, 0.06));
+
   if (area.kind === "bed") canvas.drawPath(path, stroke(MATERIAL.edging, 0.07, 0.9));
 };
 
@@ -414,6 +467,7 @@ const drawAreaEdge = (canvas: SkCanvas, area: GardenArea, path: SkPath) => {
  */
 export const createGroundFlatPicture = (): SkPicture => {
   const { bounds, areas } = GARDEN_PLAN;
+
   return createPicture(
     (canvas) => {
       for (const area of areas) {
@@ -434,15 +488,24 @@ export const createGroundFlatPicture = (): SkPicture => {
  */
 export const createGroundTexturePicture = (): SkPicture => {
   const { bounds, areas } = GARDEN_PLAN;
+
   return createPicture(
     (canvas) => {
       const bed = areas.find((area) => area.kind === "bed");
+
       for (const area of areas) {
         const path = pathOf(area);
         canvas.drawPath(path, fill(BASE_COLOR[area.kind]));
-        DRAWERS[area.kind](canvas, path, boundsOf(area), makeRng(`ground:${area.id}`), area.outline);
+        DRAWERS[area.kind](
+          canvas,
+          path,
+          boundsOf(area),
+          makeRng(`ground:${area.id}`),
+          area.outline,
+        );
         drawAreaEdge(canvas, area, path);
       }
+
       void bed;
     },
     Skia.XYWHRect(bounds.x, bounds.y, bounds.width, bounds.height),
@@ -455,19 +518,23 @@ export const createGroundTexturePicture = (): SkPicture => {
  */
 export const createGroundAnnotationsPicture = (font: SkFont | null): SkPicture => {
   const { bounds, areas } = GARDEN_PLAN;
+
   return createPicture(
     (canvas) => {
       if (!font) return;
       const house = areas.find((area) => area.kind === "house");
       const terrace = areas.find((area) => area.kind === "terrace");
+
       if (house) {
         const r = boundsOf(house);
         drawAreaLabel(canvas, font, "HAUS", r.x + r.width * 0.72, r.y + r.height * 0.35);
       }
+
       if (terrace) {
         const r = boundsOf(terrace);
         drawAreaLabel(canvas, font, "TERRASSE", r.x + r.width / 2, r.y + r.height / 2);
       }
+
       drawScaleBar(canvas, font, 0.4, bounds.y + bounds.height - 1.1);
     },
     Skia.XYWHRect(bounds.x, bounds.y, bounds.width, bounds.height),

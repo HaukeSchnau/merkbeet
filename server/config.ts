@@ -15,6 +15,7 @@ export type ServerConfig = {
 
 const required = (name: string, value: string | undefined): string => {
   if (!value) throw new Error(`${name} fehlt`);
+
   return value;
 };
 
@@ -24,11 +25,15 @@ const required = (name: string, value: string | undefined): string => {
  */
 const readPasscode = async (): Promise<string> => {
   const path = process.env.MERKBEET_PASSCODE_FILE;
+
   if (path) {
     const contents = (await file(path).text()).trim();
+
     if (!contents) throw new Error(`${path} ist leer`);
+
     return contents;
   }
+
   return required("MERKBEET_PASSCODE oder MERKBEET_PASSCODE_FILE", process.env.MERKBEET_PASSCODE);
 };
 

@@ -81,8 +81,8 @@ Konfiguration ohne Nix-Auswertung, auch während Nix-Dateien bearbeitet werden.
 `nix eval --json .#lib.project` die Produktionsdefinition.
 
 ```bash
-pnpm run typecheck   # tsc --noEmit
-pnpm run test        # Merge-Konvergenz und Sync-Dienst über HTTP
+pnpm run check       # Format, Lint und Typen (vp check)
+pnpm run test        # Merge-Konvergenz und Sync-Dienst über HTTP (vp test run)
 pnpm run preview     # rendert docs/preview/*.png ohne Gerät oder Emulator
 pnpm run icons       # rendert assets/*.png -- das Icon kommt aus dem Code
 pnpm run bench       # misst, was ein Frame kostet

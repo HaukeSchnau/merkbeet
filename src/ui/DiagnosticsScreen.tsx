@@ -18,22 +18,37 @@ import { colors, radii, spacing } from "./theme";
 
 type Befund = { name: string; wert: string };
 
+/** Was die Probe von einem Kontext liest; im Browser kann jeder Teil fehlen. */
+interface ProbeContext {
+  getParameter?: (parameter: number) => string | null;
+  VERSION?: number;
+}
+
+interface ProbeCanvas {
+  getContext(art: string): ProbeContext | null;
+}
+
+type ProbeCanvasConstructor = new (width: number, height: number) => ProbeCanvas;
+
 const webglBefunde = (): Befund[] => {
   if (Platform.OS !== "web") return [{ name: "WebGL", wert: "nur im Browser messbar" }];
   const befunde: Befund[] = [];
 
   const versuch = (art: "webgl" | "webgl2", offscreen: boolean): string => {
     try {
-      const OC = (globalThis as { OffscreenCanvas?: new (w: number, h: number) => unknown })
-        .OffscreenCanvas;
-      if (offscreen && !OC) return "OffscreenCanvas fehlt";
-      const leinwand = offscreen
-        ? (new OC!(64, 64) as { getContext: (t: string) => unknown })
-        : document.createElement("canvas");
+      const OC = (globalThis as { OffscreenCanvas?: ProbeCanvasConstructor }).OffscreenCanvas;
+      let leinwand: ProbeCanvas;
+
+      if (!offscreen) leinwand = document.createElement("canvas");
+      else if (OC) leinwand = new OC(64, 64);
+      else return "OffscreenCanvas fehlt";
       const ctx = leinwand.getContext(art);
+
       if (!ctx) return "kein Kontext";
-      const info = ctx as { getParameter?: (p: number) => unknown; VERSION?: number };
-      const version = info.getParameter && info.VERSION ? String(info.getParameter(info.VERSION)) : "ok";
+
+      const version =
+        ctx.getParameter && ctx.VERSION ? String(ctx.getParameter(ctx.VERSION)) : "ok";
+
       return version.slice(0, 60);
     } catch (fehler) {
       return `Fehler: ${String(fehler).slice(0, 60)}`;
@@ -45,18 +60,20 @@ const webglBefunde = (): Befund[] => {
   befunde.push({ name: "WebGL (offscreen)", wert: versuch("webgl", true) });
   befunde.push({
     name: "OffscreenCanvas",
-    wert: String(typeof (globalThis as { OffscreenCanvas?: unknown }).OffscreenCanvas),
+    wert: typeof (globalThis as { OffscreenCanvas?: unknown }).OffscreenCanvas,
   });
   befunde.push({
     name: "CanvasKit geladen",
-    wert: String(typeof (globalThis as { CanvasKit?: unknown }).CanvasKit),
+    wert: typeof (globalThis as { CanvasKit?: unknown }).CanvasKit,
   });
+
   return befunde;
 };
 
 const umgebung = (): Befund[] => {
   const nav = Platform.OS === "web" ? navigator : null;
   const fenster = Dimensions.get("window");
+
   return [
     { name: "Plattform", wert: `${Platform.OS} ${String(Platform.Version ?? "")}`.trim() },
     { name: "User-Agent", wert: nav?.userAgent?.slice(0, 160) ?? "nativ" },
@@ -71,10 +88,13 @@ const umgebung = (): Befund[] => {
           ? String((nav as { standalone?: boolean } | null)?.standalone ?? "?")
           : "nativ",
     },
-    { name: "Kerne", wert: String((nav as { hardwareConcurrency?: number } | null)?.hardwareConcurrency ?? "?") },
+    {
+      name: "Kerne",
+      wert: String((nav as { hardwareConcurrency?: number } | null)?.hardwareConcurrency ?? "?"),
+    },
     {
       name: "AbortSignal.timeout",
-      wert: String(typeof (globalThis as { AbortSignal?: { timeout?: unknown } }).AbortSignal?.timeout),
+      wert: typeof (globalThis as { AbortSignal?: { timeout?: unknown } }).AbortSignal?.timeout,
     },
   ];
 };
@@ -82,19 +102,23 @@ const umgebung = (): Befund[] => {
 /** Wie lange braucht ein einfacher Füllvorgang? Grobes Maß für die Grafikleistung. */
 const zeichenprobe = (): Befund[] => {
   if (Platform.OS !== "web") return [];
+
   try {
     const leinwand = document.createElement("canvas");
     leinwand.width = 780;
     leinwand.height = 1400;
     const ctx = leinwand.getContext("2d");
+
     if (!ctx) return [{ name: "2D-Kontext", wert: "fehlt" }];
     const start = performance.now();
+
     for (let i = 0; i < 400; i++) {
       ctx.fillStyle = i % 2 ? "rgba(80,120,60,0.5)" : "rgba(120,80,60,0.5)";
       ctx.beginPath();
       ctx.ellipse(i * 2, i * 3, 40, 30, 0, 0, Math.PI * 2);
       ctx.fill();
     }
+
     return [{ name: "400 Ellipsen (2D)", wert: `${(performance.now() - start).toFixed(1)} ms` }];
   } catch (fehler) {
     return [{ name: "2D-Probe", wert: `Fehler: ${String(fehler).slice(0, 60)}` }];
@@ -120,14 +144,18 @@ export const DiagnosticsScreen = () => {
 
   useEffect(() => {
     if (Platform.OS !== "web") return;
+
     const zaehle = (art: keyof typeof roh) => () =>
       setRoh((vorher) => ({ ...vorher, [art]: vorher[art] + 1 }));
+
     const listener: Array<[string, () => void]> = [
       ["touchstart", zaehle("touchstart")],
       ["pointerdown", zaehle("pointerdown")],
       ["click", zaehle("click")],
     ];
+
     for (const [art, fn] of listener) document.addEventListener(art, fn, { passive: true });
+
     return () => {
       for (const [art, fn] of listener) document.removeEventListener(art, fn);
     };
@@ -142,6 +170,7 @@ export const DiagnosticsScreen = () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ befunde, tippZaehler, skia, roh }),
       });
+
       setGesendet(antwort.ok ? "Bericht ist angekommen." : `Server antwortete ${antwort.status}.`);
     } catch (fehler) {
       setGesendet(`Konnte nicht senden: ${String(fehler).slice(0, 80)}`);

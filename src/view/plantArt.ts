@@ -30,12 +30,16 @@ const fill = (color: string, alpha = 1): SkPaint => {
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
   paint.setColor(Skia.Color(color));
+
   if (alpha < 1) paint.setAlphaf(alpha);
+
   return paint;
 };
 
 /** Einheitsform: Oval mit Länge 1 und Breite 1, zentriert. Wird nur skaliert. */
-const UNIT_OVAL: SkPath = Skia.PathBuilder.Make().addOval(Skia.XYWHRect(-0.5, -0.5, 1, 1)).detach();
+const UNIT_OVAL: SkPath = Skia.PathBuilder.Make()
+  .addOval(Skia.XYWHRect(-0.5, -0.5, 1, 1))
+  .detach();
 
 const batch = () => Skia.PathBuilder.Make();
 
@@ -76,6 +80,7 @@ const addLeafRing = (
 ) => {
   const step = 360 / count;
   const phase = rng.range(0, step);
+
   for (let i = 0; i < count; i++) {
     const angle = phase + i * step + rng.jitter(0, step * 0.35);
     const rad = (angle * Math.PI) / 180;
@@ -108,6 +113,7 @@ const drawMound = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng:
     { r: radius * 0.38, count: 8, color: palette.leafMid, leaf: 0.48 },
     { r: radius * 0.14, count: 5, color: palette.leafLight, leaf: 0.44 },
   ];
+
   for (const ring of rings) {
     const b = batch();
     addLeafRing(b, ring.r, ring.count, radius * ring.leaf, radius * ring.leaf * 0.62, rng);
@@ -127,11 +133,13 @@ const drawCanopy = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng
     { r: radius * 0.4, count: 6, color: palette.leafMid },
     { r: radius * 0.18, count: 4, color: palette.leafLight },
   ];
+
   for (const ring of rings) {
     const b = batch();
     addLeafRing(b, ring.r, ring.count, radius * 0.62, radius * 0.42, rng);
     canvas.drawPath(b.detach(), fill(ring.color));
   }
+
   // Stamm blitzt in der Mitte durch die Krone.
   const trunk = batch();
   addCircle(trunk, rng.jitter(0, radius * 0.05), rng.jitter(0, radius * 0.05), radius * 0.09);
@@ -140,13 +148,16 @@ const drawCanopy = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng
 
 /** Ziergras: einzelne Halme, die vom Horst nach außen kippen. */
 const drawGrass = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng: Rng) => {
-  const colors = [palette.leafDark, palette.leafMid, palette.leafLight];
-  const groups = colors.map(() => batch());
+  const dark = batch();
+  const mid = batch();
+  const light = batch();
+
   for (let i = 0; i < 26; i++) {
     const angle = rng.range(0, Math.PI * 2);
     const length = rng.range(radius * 0.55, radius * 1.05);
     const bend = rng.range(-0.35, 0.35);
-    const group = groups[i % groups.length];
+    // Reihum dunkel, mittel, hell.
+    const group = i % 3 === 0 ? dark : i % 3 === 1 ? mid : light;
     group
       .moveTo(0, 0)
       .quadTo(
@@ -156,15 +167,22 @@ const drawGrass = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng:
         Math.sin(angle + bend) * length,
       );
   }
+
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
   paint.setStyle(PaintStyle.Stroke);
   paint.setStrokeCap(StrokeCap.Round);
   paint.setStrokeWidth(radius * 0.07);
-  groups.forEach((group, index) => {
-    paint.setColor(Skia.Color(colors[index]));
-    canvas.drawPath(group.detach(), paint);
-  });
+
+  for (const [color, path] of [
+    [palette.leafDark, dark],
+    [palette.leafMid, mid],
+    [palette.leafLight, light],
+  ] as const) {
+    paint.setColor(Skia.Color(color));
+    canvas.drawPath(path.detach(), paint);
+  }
+
   const heart = batch();
   addCircle(heart, 0, 0, radius * 0.18);
   canvas.drawPath(heart.detach(), fill(palette.leafDark, 0.85));
@@ -202,8 +220,14 @@ type BloomAdder = (
 const addCluster: BloomAdder = (petals, cores, cx, cy, size, rng) => {
   for (let i = 0; i < 7; i++) {
     const angle = (i / 7) * Math.PI * 2 + rng.range(0, 0.6);
-    addCircle(petals, cx + Math.cos(angle) * size * 0.5, cy + Math.sin(angle) * size * 0.5, size * 0.42);
+    addCircle(
+      petals,
+      cx + Math.cos(angle) * size * 0.5,
+      cy + Math.sin(angle) * size * 0.5,
+      size * 0.42,
+    );
   }
+
   addCircle(cores, cx, cy, size * 0.45);
 };
 
@@ -217,10 +241,17 @@ const addSpike: BloomAdder = (petals, cores, cx, cy, size, rng) => {
 /** Einzelne gefüllte Blüte -- Rose. */
 const addRosette: BloomAdder = (petals, cores, cx, cy, size, rng) => {
   const phase = rng.range(0, Math.PI);
+
   for (let i = 0; i < 5; i++) {
     const angle = phase + (i / 5) * Math.PI * 2;
-    addCircle(petals, cx + Math.cos(angle) * size * 0.42, cy + Math.sin(angle) * size * 0.42, size * 0.46);
+    addCircle(
+      petals,
+      cx + Math.cos(angle) * size * 0.42,
+      cy + Math.sin(angle) * size * 0.42,
+      size * 0.46,
+    );
   }
+
   addCircle(cores, cx, cy, size * 0.36);
 };
 
@@ -236,6 +267,7 @@ const addUmbel: BloomAdder = (petals, _cores, cx, cy, size, rng) => {
 /** Sternförmige Einzelblüte -- Sternmagnolie. */
 const addStarBloom: BloomAdder = (petals, cores, cx, cy, size, rng) => {
   const phase = rng.range(0, 360);
+
   for (let i = 0; i < 8; i++) {
     const angle = phase + i * 45;
     const rad = (angle * Math.PI) / 180;
@@ -248,10 +280,14 @@ const addStarBloom: BloomAdder = (petals, cores, cx, cy, size, rng) => {
       angle,
     );
   }
+
   addCircle(cores, cx, cy, size * 0.18);
 };
 
-const BLOOMS: Record<Exclude<BloomStyle, "none">, { add: BloomAdder; count: number; size: number }> = {
+const BLOOMS: Record<
+  Exclude<BloomStyle, "none">,
+  { add: BloomAdder; count: number; size: number }
+> = {
   cluster: { add: addCluster, count: 6, size: 0.28 },
   spike: { add: addSpike, count: 8, size: 0.24 },
   rosette: { add: addRosette, count: 5, size: 0.3 },
@@ -259,13 +295,20 @@ const BLOOMS: Record<Exclude<BloomStyle, "none">, { add: BloomAdder; count: numb
   star: { add: addStarBloom, count: 7, size: 0.26 },
 };
 
-const drawBlooms = (canvas: SkCanvas, radius: number, style: BloomStyle, palette: PlantPalette, rng: Rng) => {
+const drawBlooms = (
+  canvas: SkCanvas,
+  radius: number,
+  style: BloomStyle,
+  palette: PlantPalette,
+  rng: Rng,
+) => {
   if (style === "none" || !palette.bloom) return;
   const spec = BLOOMS[style];
   const petals = batch();
   const cores = batch();
   const step = (Math.PI * 2) / spec.count;
   const phase = rng.range(0, step);
+
   for (let i = 0; i < spec.count; i++) {
     // Gleichmäßig verteilt mit Streuung -- rein zufällige Winkel klumpen
     // sichtbar auf einer Seite des Strauchs.
@@ -273,6 +316,7 @@ const drawBlooms = (canvas: SkCanvas, radius: number, style: BloomStyle, palette
     const r = rng.range(radius * 0.12, radius * 0.58);
     spec.add(petals, cores, Math.cos(angle) * r, Math.sin(angle) * r, radius * spec.size, rng);
   }
+
   canvas.drawPath(petals.detach(), fill(palette.bloom));
   canvas.drawPath(cores.detach(), fill(palette.bloomCore ?? palette.bloom));
 };
@@ -322,12 +366,18 @@ const drawShadow = (canvas: SkCanvas, radius: number) => {
  * Baut das Bild einer Pflanze. `seed` sollte die Pflanzen-id sein, damit
  * dieselbe Pflanze immer gleich aussieht.
  */
-export const createPlantPicture = (species: Species, diameterMeters: number, seed: string): SkPicture => {
+export const createPlantPicture = (
+  species: Species,
+  diameterMeters: number,
+  seed: string,
+): SkPicture => {
   const radius = diameterMeters / 2;
   const rng = makeRng(seed);
+
   return createPicture(
     (canvas) => {
       drawShadow(canvas, radius);
+
       if (species.art.kind !== "procedural") return;
       const { form, bloom, palette } = species.art;
       FORMS[form](canvas, radius, palette, rng);

@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nix-infra-modules = {
-      url = "github:HaukeSchnau/nix-infra-modules/c08469c9ed76a0e2223cb6bf1ac624580be6f98c";
+      url = "github:HaukeSchnau/nix-infra-modules/b365d13637b9dc83c397df542b5112a50ac8cbb9";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -16,6 +16,8 @@
       ...
     }:
     let
+      toolchain = pkgs: import ./nix/toolchain.nix { inherit pkgs; sdk = nix-infra-modules; };
+
       src = nix-infra-modules.lib.projectSource {
         root = ./.;
         exclude = [
@@ -28,14 +30,14 @@
       mkPackages =
         pkgs:
         let
-          inherit (import ./nix/toolchain.nix { inherit pkgs; }) nodejs pnpm;
+          inherit (toolchain pkgs) nodejs pnpm;
           version = "1.0.0";
 
           pnpmDeps = pkgs.fetchPnpmDeps {
             pname = "merkbeet-pnpm-dependencies";
             inherit pnpm src version;
             fetcherVersion = 4;
-            hash = "sha256-zHAqqgiELHugw1Nex0pRX02qFNl20i7wUvLPmsE8GIU=";
+            hash = "sha256-kppI7Ws4s5C25EF+HB/HgQDajOXFdzSjhEjZ5XK1ghQ=";
           };
 
           # Der Web-Client als statischer Export. Läuft unter dem Basispfad /,
@@ -58,7 +60,6 @@
               EXPO_NO_DEPENDENCY_VALIDATION = "1";
               MERKBEET_BASE_URL = "";
             };
-            pnpmInstallFlags = [ "--frozen-lockfile" ];
 
             buildPhase = ''
               runHook preBuild
@@ -97,7 +98,6 @@
             ];
 
             env.pnpm_config_trust_lockfile = "true";
-            pnpmInstallFlags = [ "--frozen-lockfile" ];
 
             buildPhase = ''
               runHook preBuild
@@ -166,14 +166,11 @@
         system: _:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          toolchain = import ./nix/toolchain.nix { inherit pkgs; };
         in
         {
+          # Bun too: the tests start the sync service with it (server/server.test.ts).
           ci = pkgs.mkShell {
-            packages = [
-              toolchain.nodejs
-              toolchain.pnpm
-            ];
+            packages = builtins.attrValues (toolchain pkgs);
           };
         }
       ) project.packages;

@@ -5,7 +5,7 @@
     ./project.nix
   ];
 
-  packages = builtins.attrValues (import ./nix/toolchain.nix { inherit pkgs; });
+  packages = builtins.attrValues (import ./nix/toolchain.nix { inherit pkgs; sdk = inputs.projectSdk; });
   env.EXPO_NO_TELEMETRY = "1";
 
   project.enable = true;
@@ -50,7 +50,7 @@
     };
     "merkbeet:check" = {
       after = [ "merkbeet:dependencies" ];
-      exec = "pnpm run typecheck && bun test";
+      exec = "pnpm run check && pnpm run test";
     };
   };
 

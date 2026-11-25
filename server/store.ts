@@ -32,14 +32,22 @@ export class GardenStore {
   }
 
   private revision(): number {
-    const row = this.db.query<{ value: string }, []>("SELECT value FROM meta WHERE key = 'revision'").get();
+    const row = this.db
+      .query<{ value: string }, []>("SELECT value FROM meta WHERE key = 'revision'")
+      .get();
+
     return row ? Number(row.value) : 0;
   }
 
   private records(): PlantRecords {
-    const rows = this.db.query<{ id: string; doc: string }, []>("SELECT id, doc FROM records").all();
+    const rows = this.db
+      .query<{ id: string; doc: string }, []>("SELECT id, doc FROM records")
+      .all();
+
     const records: PlantRecords = {};
+
     for (const row of rows) records[row.id] = JSON.parse(row.doc) as PlantRecord;
+
     return records;
   }
 
@@ -61,16 +69,23 @@ export class GardenStore {
     const write = this.db.transaction((at: number) => {
       const touched = new Set(changes.map((change) => change.id));
       const current: PlantRecords = {};
-      const select = this.db.query<{ doc: string }, [string]>("SELECT doc FROM records WHERE id = ?");
+
+      const select = this.db.query<{ doc: string }, [string]>(
+        "SELECT doc FROM records WHERE id = ?",
+      );
+
       for (const id of touched) {
         const row = select.get(id);
+
         if (row) current[id] = JSON.parse(row.doc) as PlantRecord;
       }
 
       const updated = applyChanges(current, changes, at);
+
       const upsert = this.db.query<never, [string, string]>(
         "INSERT INTO records (id, doc) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET doc = excluded.doc",
       );
+
       for (const [id, record] of Object.entries(updated)) upsert.run(id, JSON.stringify(record));
 
       const next = this.revision() + 1;
@@ -82,18 +97,22 @@ export class GardenStore {
     });
 
     write(Date.now());
+
     return this.snapshot();
   }
 
   /** Nur für Tests und die Migration bestehender Geräte. */
   seed(records: PlantRecords): void {
     const merged = mergeRecords(this.records(), records);
+
     const write = this.db.transaction(() => {
       const upsert = this.db.query<never, [string, string]>(
         "INSERT INTO records (id, doc) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET doc = excluded.doc",
       );
+
       for (const [id, record] of Object.entries(merged)) upsert.run(id, JSON.stringify(record));
     });
+
     write();
   }
 

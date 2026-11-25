@@ -58,14 +58,14 @@ zeitkonstant, und Fehlversuche werden pro Absender gedrosselt.
 
 ## Endpunkte
 
-| Route | Zweck |
-| --- | --- |
-| `GET /healthz` | Für die Überwachung, ohne Code |
-| `GET /api/garden?revision=N` | Stand holen; bei gleicher Revision Antwort ohne Daten |
-| `POST /api/garden` | Änderungen schicken, bekommt den zusammengeführten Stand zurück |
-| `POST /api/photos` | Foto hochladen, gibt den Pfad zurück |
-| `GET /api/photos/<id>` | Foto abrufen |
-| alles andere | der exportierte Web-Client |
+| Route                        | Zweck                                                           |
+| ---------------------------- | --------------------------------------------------------------- |
+| `GET /healthz`               | Für die Überwachung, ohne Code                                  |
+| `GET /api/garden?revision=N` | Stand holen; bei gleicher Revision Antwort ohne Daten           |
+| `POST /api/garden`           | Änderungen schicken, bekommt den zusammengeführten Stand zurück |
+| `POST /api/photos`           | Foto hochladen, gibt den Pfad zurück                            |
+| `GET /api/photos/<id>`       | Foto abrufen                                                    |
+| alles andere                 | der exportierte Web-Client                                      |
 
 Ein Dienst liefert API **und** Web-Client aus. Damit entfällt CORS, und die App
 kann relative Pfade nutzen.

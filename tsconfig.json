@@ -1,9 +1,7 @@
 {
-  "extends": "expo/tsconfig.base",
+  "extends": ["@schnau/tsconfig", "expo/tsconfig.base"],
   "compilerOptions": {
-    "strict": true,
-    "types": [
-      "bun"
-    ]
-  }
+    "types": ["bun"]
+  },
+  "exclude": ["node_modules", "android", "ios", "dist", "deploy", "tools/oxlint/anti-slop"]
 }

@@ -7,6 +7,10 @@ import type { ExpoConfig } from "expo/config";
  */
 const baseUrl = process.env.MERKBEET_BASE_URL ?? "";
 
+// Sonst installiert Expos TypeScript-Einrichtung bei jedem Start `typescript`;
+// die Typen prüft tsrs.
+process.env.EXPO_NO_TYPESCRIPT_SETUP = "1";
+
 const config: ExpoConfig = {
   name: "Merkbeet",
   slug: "merkbeet",

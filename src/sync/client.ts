@@ -25,10 +25,15 @@ export const isUnchanged = (result: PullResult): result is { revision: number; u
 
 const REQUEST_TIMEOUT_MS = 12_000;
 
+/** Eine Anfrage mit Kopfzeilen als einfachem Objekt, damit sie sich mit dem Zugangscode verbinden. */
+interface SyncRequest extends Omit<RequestInit, "headers"> {
+  headers?: Record<string, string>;
+}
+
 const request = async <T>(
   passcode: string,
   path: string,
-  init: RequestInit = {},
+  init: SyncRequest = {},
 ): Promise<SyncResult<T>> => {
   try {
     const response = await fetch(`${SERVER_BASE}${path}`, {
@@ -37,13 +42,20 @@ const request = async <T>(
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
-    if (response.status === 401 || response.status === 429) return { ok: false, failure: { kind: "unauthorized" } };
+    if (response.status === 401 || response.status === 429)
+      return { ok: false, failure: { kind: "unauthorized" } };
+
     if (!response.ok) {
       return {
         ok: false,
-        failure: { kind: "rejected", status: response.status, message: await response.text().catch(() => "") },
+        failure: {
+          kind: "rejected",
+          status: response.status,
+          message: await response.text().catch(() => ""),
+        },
       };
     }
+
     return { ok: true, value: (await response.json()) as T };
   } catch {
     // fetch wirft bei fehlendem Netz, DNS-Problemen und Zeitüberschreitung.
@@ -56,7 +68,10 @@ export const pullGarden = (passcode: string, revision: number): Promise<SyncResu
   request<PullResult>(passcode, `/api/garden?revision=${revision}`);
 
 /** Schickt Änderungen und bekommt den zusammengeführten Gesamtstand zurück. */
-export const pushGarden = (passcode: string, changes: PlantChange[]): Promise<SyncResult<GardenSnapshot>> =>
+export const pushGarden = (
+  passcode: string,
+  changes: PlantChange[],
+): Promise<SyncResult<GardenSnapshot>> =>
   request<GardenSnapshot>(passcode, "/api/garden", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -66,18 +81,20 @@ export const pushGarden = (passcode: string, changes: PlantChange[]): Promise<Sy
 /** Lädt ein Foto hoch und gibt den Pfad zurück, der synchronisiert wird. */
 export const uploadPhoto = (
   passcode: string,
-  bytes: Uint8Array,
+  bytes: Uint8Array<ArrayBuffer>,
   contentType: string,
 ): Promise<SyncResult<{ photoUri: string }>> =>
   request<{ photoUri: string }>(passcode, "/api/photos", {
     method: "POST",
     headers: { "content-type": contentType },
-    body: bytes as unknown as BodyInit,
+    body: bytes,
   });
 
 /** Prüft einen eingegebenen Code, ohne etwas zu verändern. */
 export const checkPasscode = async (passcode: string): Promise<SyncResult<PlantRecords>> => {
   const result = await pullGarden(passcode, -1);
+
   if (!result.ok) return result;
+
   return { ok: true, value: isUnchanged(result.value) ? {} : result.value.records };
 };

@@ -1,7 +1,10 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import { type ChildProcess, spawn } from "node:child_process";
+import { once } from "node:events";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 
 import { resolvePlants } from "../src/sync/merge";
 import type { GardenSnapshot, PlantChange } from "../src/sync/types";
@@ -16,7 +19,7 @@ const PORT = 8791;
 const base = `http://127.0.0.1:${PORT}`;
 
 let stateDir: string;
-let child: ReturnType<typeof Bun.spawn>;
+let child: ChildProcess;
 
 // Die gebundene Zugangscode-Datei eines Dev-Workspaces darf den Testcode nicht überschreiben.
 const serverEnv = () => ({
@@ -28,34 +31,48 @@ const serverEnv = () => ({
   MERKBEET_PASSCODE_FILE: "",
 });
 
-const api = (path: string, init: RequestInit = {}) =>
+/** Eine Anfrage mit Kopfzeilen als einfachem Objekt, damit sie sich mit dem Zugangscode verbinden. */
+interface ApiRequest extends Omit<RequestInit, "headers"> {
+  headers?: Record<string, string>;
+}
+
+const api = (path: string, init: ApiRequest = {}) =>
   fetch(`${base}${path}`, {
     ...init,
-    headers: { authorization: `Bearer ${PASSCODE}`, "content-type": "application/json", ...init.headers },
+    headers: {
+      authorization: `Bearer ${PASSCODE}`,
+      "content-type": "application/json",
+      ...init.headers,
+    },
   });
 
 const push = async (changes: PlantChange[]): Promise<GardenSnapshot> => {
   const response = await api("/api/garden", { method: "POST", body: JSON.stringify({ changes }) });
   expect(response.status).toBe(200);
+
   return (await response.json()) as GardenSnapshot;
 };
 
-beforeAll(async () => {
-  stateDir = mkdtempSync(join(tmpdir(), "merkbeet-test-"));
-  child = Bun.spawn(["bun", "server/index.ts"], {
-    env: serverEnv(),
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+/** Startet den Dienst unter Bun, wie in Produktion, und wartet, bis er antwortet. */
+const startServer = async () => {
+  child = spawn("bun", ["server/index.ts"], { env: serverEnv(), stdio: "ignore" });
+
   for (let attempt = 0; attempt < 60; attempt++) {
     try {
       if ((await fetch(`${base}/healthz`)).ok) return;
     } catch {
       // Server noch nicht bereit.
     }
-    await Bun.sleep(100);
+
+    await sleep(100);
   }
+
   throw new Error("Server ist nicht gestartet");
+};
+
+beforeAll(async () => {
+  stateDir = mkdtempSync(join(tmpdir(), "merkbeet-test-"));
+  await startServer();
 });
 
 afterAll(() => {
@@ -69,7 +86,10 @@ describe("Zugang", () => {
   });
 
   it("weist einen falschen Code ab", async () => {
-    const response = await fetch(`${base}/api/garden`, { headers: { authorization: "Bearer falsch" } });
+    const response = await fetch(`${base}/api/garden`, {
+      headers: { authorization: "Bearer falsch" },
+    });
+
     expect(response.status).toBe(401);
   });
 
@@ -85,6 +105,7 @@ describe("Schema", () => {
       method: "POST",
       body: JSON.stringify({ changes: [{ id: "x", speciesId: "kaktus" }] }),
     });
+
     expect(response.status).toBe(400);
   });
 
@@ -93,6 +114,7 @@ describe("Schema", () => {
       method: "POST",
       body: JSON.stringify({ changes: [{ id: "rose-w1", fields: { diameterMeters: 9999 } }] }),
     });
+
     expect(response.status).toBe(400);
   });
 });
@@ -102,7 +124,7 @@ describe("Sync", () => {
     const before = ((await (await api("/api/garden")).json()) as GardenSnapshot).revision;
     const after = await push([{ id: "rose-w1", fields: { notes: "erste Notiz" } }]);
     expect(after.revision).toBe(before + 1);
-    expect(after.records["rose-w1"].fields.notes?.value).toBe("erste Notiz");
+    expect(after.records["rose-w1"]?.fields.notes?.value).toBe("erste Notiz");
   });
 
   it("antwortet bei unveränderter Revision ohne Daten", async () => {
@@ -126,25 +148,29 @@ describe("Sync", () => {
       push([{ id: "rose-s2", fields: { notes: "Mutter" } }]),
       push([{ id: "rose-s3", fields: { notes: "PC" } }]),
     ]);
+
     // Jede Änderung muss angekommen sein, egal wer zuerst dran war.
     const final = (await (await api("/api/garden")).json()) as GardenSnapshot;
-    expect(final.records["rose-s1"].fields.notes?.value).toBe("Vater");
-    expect(final.records["rose-s2"].fields.notes?.value).toBe("Mutter");
-    expect(final.records["rose-s3"].fields.notes?.value).toBe("PC");
+    expect(final.records["rose-s1"]?.fields.notes?.value).toBe("Vater");
+    expect(final.records["rose-s2"]?.fields.notes?.value).toBe("Mutter");
+    expect(final.records["rose-s3"]?.fields.notes?.value).toBe("PC");
     // Und jede Antwort muss eine eigene Revision getragen haben.
     expect(new Set(snapshots.map((s) => s.revision)).size).toBe(3);
   });
 
   it("nimmt ein Foto an und liefert es wieder aus", async () => {
     const png = Buffer.from(
-      "89504e470d0a1a0a0000000d494844520000000100000001080600000" + "01f15c4890000000a49444154789c6300010000050001".padEnd(46, "0"),
+      "89504e470d0a1a0a0000000d494844520000000100000001080600000" +
+        "01f15c4890000000a49444154789c6300010000050001".padEnd(46, "0"),
       "hex",
     );
+
     const upload = await fetch(`${base}/api/photos`, {
       method: "POST",
       headers: { authorization: `Bearer ${PASSCODE}`, "content-type": "image/png" },
       body: png,
     });
+
     expect(upload.status).toBe(200);
     const { photoUri } = (await upload.json()) as { photoUri: string };
     expect(photoUri).toMatch(/^\/api\/photos\/[a-f0-9]{32}\.png$/);
@@ -160,6 +186,7 @@ describe("Sync", () => {
       headers: { authorization: `Bearer ${PASSCODE}`, "content-type": "application/zip" },
       body: Buffer.from("PK"),
     });
+
     expect(response.status).toBe(415);
   });
 });
@@ -167,24 +194,12 @@ describe("Sync", () => {
 describe("Dauerhaftigkeit", () => {
   it("hält den Stand über einen Neustart", async () => {
     await push([{ id: "grass-w1", fields: { name: "Haaresgras" } }]);
+    const exited = once(child, "exit");
     child.kill();
-    await child.exited;
-
-    child = Bun.spawn(["bun", "server/index.ts"], {
-      env: serverEnv(),
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    for (let attempt = 0; attempt < 60; attempt++) {
-      try {
-        if ((await fetch(`${base}/healthz`)).ok) break;
-      } catch {
-        // noch nicht bereit
-      }
-      await Bun.sleep(100);
-    }
+    await exited;
+    await startServer();
 
     const snapshot = (await (await api("/api/garden")).json()) as GardenSnapshot;
-    expect(snapshot.records["grass-w1"].fields.name?.value).toBe("Haaresgras");
+    expect(snapshot.records["grass-w1"]?.fields.name?.value).toBe("Haaresgras");
   });
 });

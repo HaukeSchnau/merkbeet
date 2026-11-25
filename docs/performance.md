@@ -3,13 +3,13 @@
 Die erste Fassung ruckelte schon beim Zoomen und Schieben. Gemessen mit
 `pnpm run bench`, das die echte Szene über CanvasKit rastert:
 
-| | vorher | nachher |
-| --- | --- | --- |
-| Übersicht (34 px/m) | 142 ms/Frame | **20 ms** |
-| Detail (110 px/m) | 430 ms/Frame | **122 ms** |
-| Skia-Knoten pro Frame | über 50 | 3 |
-| Zeichenaufrufe | rund 6000 | rund 200 |
-| Weichzeichner | rund 50 | 0 |
+|                       | vorher       | nachher    |
+| --------------------- | ------------ | ---------- |
+| Übersicht (34 px/m)   | 142 ms/Frame | **20 ms**  |
+| Detail (110 px/m)     | 430 ms/Frame | **122 ms** |
+| Skia-Knoten pro Frame | über 50      | 3          |
+| Zeichenaufrufe        | rund 6000    | rund 200   |
+| Weichzeichner         | rund 50      | 0          |
 
 Die Zahlen sind CPU-Rasterung in Node, nicht die eines Handy-GPUs. Für
 Verhältnisse und für die Anzahl der Aufrufe taugen sie trotzdem.

@@ -42,7 +42,9 @@ const fill = (color: string, alpha = 1): SkPaint => {
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
   paint.setColor(Skia.Color(color));
+
   if (alpha < 1) paint.setAlphaf(alpha);
+
   return paint;
 };
 
@@ -53,12 +55,19 @@ const fill = (color: string, alpha = 1): SkPaint => {
 const drawSoil = (canvas: SkCanvas) => {
   canvas.drawRect(Skia.XYWHRect(0, 0, 1, 1), fill(MATERIAL.soil.dark));
   const rng = makeRng("icon:soil");
+
   for (let i = 0; i < 22; i++) {
     canvas.drawOval(
-      Skia.XYWHRect(rng.range(-0.1, 1), rng.range(-0.1, 1), rng.range(0.12, 0.34), rng.range(0.08, 0.2)),
+      Skia.XYWHRect(
+        rng.range(-0.1, 1),
+        rng.range(-0.1, 1),
+        rng.range(0.12, 0.34),
+        rng.range(0.08, 0.2),
+      ),
       fill(rng.next() > 0.5 ? MATERIAL.soil.dark : MATERIAL.soil.light, 0.34),
     );
   }
+
   // Zum Rand hin abdunkeln, damit die Fläche nicht flach wirkt.
   const vignette = fill(MATERIAL.soil.mulch, 0.3);
   vignette.setStyle(PaintStyle.Stroke);
@@ -75,6 +84,7 @@ const drawSoil = (canvas: SkCanvas) => {
  */
 const drawPlant = (canvas: SkCanvas, diameter: number) => {
   const species = speciesOf("magnolia");
+
   if (species.art.kind !== "procedural") return;
   const { palette } = species.art;
 
@@ -93,6 +103,7 @@ const drawPlant = (canvas: SkCanvas, diameter: number) => {
 
   const rng = makeRng("icon:blossoms");
   const radius = diameter / 2;
+
   // Anteile des Kronenradius. Die mittlere Blüte deckt den Stammansatz ab, der
   // sonst wie ein Loch in der Krone aussieht.
   const places: Array<[number, number]> = [
@@ -102,11 +113,14 @@ const drawPlant = (canvas: SkCanvas, diameter: number) => {
     [0.42, 0.4],
     [0.04, 0.02],
   ];
+
   canvas.save();
   canvas.translate(0.5, 0.5);
+
   for (const [x, y] of places) {
     drawStar(canvas, x * radius, y * radius, radius * 0.34, palette, rng);
   }
+
   canvas.restore();
 };
 
@@ -128,6 +142,7 @@ const drawSilhouette = (canvas: SkCanvas) => {
     canvas.drawOval(Skia.XYWHRect(-0.028, -0.36, 0.056, 0.3), ink);
     canvas.restore();
   }
+
   canvas.drawCircle(0, 0, 0.075, ink);
   canvas.restore();
 };
@@ -139,18 +154,24 @@ const drawSilhouette = (canvas: SkCanvas) => {
 export const drawIcon = (canvas: SkCanvas, variant: IconVariant): void => {
   if (variant === "background") {
     drawSoil(canvas);
+
     return;
   }
+
   if (variant === "monochrome") {
     drawSilhouette(canvas);
+
     return;
   }
+
   if (variant === "full") {
     // Kein eigener Rahmen: iOS und Android maskieren Icons rund, ein gezeichneter
     // Rand würde an den Ecken angeschnitten aussehen.
     drawSoil(canvas);
     drawPlant(canvas, 0.72);
+
     return;
   }
+
   drawPlant(canvas, SAFE_ZONE * 0.94);
 };

@@ -1,15 +1,16 @@
-import { Pnpm, Project } from "@calder-ci/std"
-import { flake } from "./flake.ts"
+import { Pnpm, Project } from "@calder-ci/std";
+import { flake } from "./flake.ts";
 
-const shell = flake.devShells.ci
+const shell = flake.devShells.ci;
 
 export default Project.standard({
   flake,
+  vp: { shell, setup: Pnpm.install({ shell }) },
   placement: {
     shell,
-    setup: Pnpm.install({ shell, dir: "deploy" }),
+    setup: Pnpm.install({ shell, dir: "deploy", name: "install-deploy" }),
     dir: "deploy",
     env: "cloudflare",
     secrets: { FLEET_TOKEN_FILE: "placement-token" },
   },
-})
+});

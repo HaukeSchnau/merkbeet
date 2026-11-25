@@ -79,11 +79,15 @@ export const PlantSheet = ({
   const changeDate = (text: string) => {
     if (!plant) return;
     dateDraft.value = text;
+
     if (text.trim() === "") {
       onEdit(plant.id, { plantedAt: undefined });
+
       return;
     }
+
     const iso = parseGermanDate(text);
+
     if (iso) onEdit(plant.id, { plantedAt: iso });
   };
 
@@ -95,7 +99,7 @@ export const PlantSheet = ({
   return (
     <Host seedColor={colors.accent} style={styles.host}>
       <BottomSheet isPresented onDismiss={onClose} snapPoints={["half", "full"]} showDragIndicator>
-        {(
+        {
           <>
             {plant.photoUri ? <PlantPhoto uri={resolvePhotoUri(plant.photoUri)} /> : null}
 
@@ -154,7 +158,11 @@ export const PlantSheet = ({
                   <Button
                     variant="outlined"
                     label={
-                      photoBusy ? "Lädt hoch …" : plant.photoUri ? "Foto ersetzen" : "Foto hinzufügen"
+                      photoBusy
+                        ? "Lädt hoch …"
+                        : plant.photoUri
+                          ? "Foto ersetzen"
+                          : "Foto hinzufügen"
                     }
                     onPress={() => {
                       if (photoBusy || !passcode) return;
@@ -185,7 +193,10 @@ export const PlantSheet = ({
                       {species.botanical}
                     </Text>
                   ) : null}
-                  <Detail label="Gepflanzt" value={formatGermanDate(plant.plantedAt) || "nicht notiert"} />
+                  <Detail
+                    label="Gepflanzt"
+                    value={formatGermanDate(plant.plantedAt) || "nicht notiert"}
+                  />
                   <Detail label="Grösse" value={`${komma(diameter)} m Durchmesser`} />
                   <Detail
                     label="Position"
@@ -202,7 +213,7 @@ export const PlantSheet = ({
               </FieldGroup>
             )}
           </>
-        )}
+        }
       </BottomSheet>
     </Host>
   );

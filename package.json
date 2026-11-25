@@ -1,7 +1,22 @@
 {
   "name": "merkbeet",
   "version": "1.0.0",
+  "private": true,
   "main": "index.ts",
+  "scripts": {
+    "start": "pnpm exec expo start",
+    "android": "pnpm exec expo start --android",
+    "ios": "pnpm exec expo start --ios",
+    "web": "pnpm exec expo start --web",
+    "preview": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/render.ts",
+    "build:web": "pnpm exec expo export --platform web --output-dir dist",
+    "server": "bun server/index.ts",
+    "test": "vp test run",
+    "setup:web": "pnpm exec setup-skia-web public",
+    "icons": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/icons.ts",
+    "bench": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/bench.ts",
+    "check": "vp check"
+  },
   "dependencies": {
     "@expo-google-fonts/nunito": "^0.4.2",
     "@expo/metro-runtime": "57.0.12",
@@ -25,29 +40,19 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@oxlint/plugins": "1.94.0",
+    "@schnau/tsconfig": "^0.1.0",
     "@types/bun": "^1.3.14",
     "@types/react": "~19.2.2",
     "canvaskit-wasm": "0.41.0",
-    "typescript": "~6.0.3"
+    "tsrs": "7.1.0-beta.tsrs4",
+    "vite-plus": "catalog:"
   },
-  "scripts": {
-    "start": "pnpm exec expo start",
-    "android": "pnpm exec expo start --android",
-    "ios": "pnpm exec expo start --ios",
-    "web": "pnpm exec expo start --web",
-    "preview": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/render.ts",
-    "typecheck": "pnpm exec tsc --noEmit",
-    "build:web": "pnpm exec expo export --platform web --output-dir dist",
-    "server": "bun server/index.ts",
-    "test": "bun test",
-    "setup:web": "pnpm exec setup-skia-web public",
-    "icons": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/icons.ts",
-    "bench": "bun --preload ./scripts/preview/preload.ts ./scripts/preview/bench.ts",
-    "check": "pnpm run typecheck && bun test && nix flake check"
+  "engines": {
+    "node": ">=26"
   },
-  "private": true,
+  "packageManager": "pnpm@12.9.0",
   "trustedDependencies": [
     "@shopify/react-native-skia"
-  ],
-  "packageManager": "pnpm@11.2.2"
+  ]
 }

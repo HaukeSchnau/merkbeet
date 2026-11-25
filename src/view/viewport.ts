@@ -21,6 +21,7 @@ export const fitScale = (bounds: Rect, screen: Screen): number =>
 /** Grenzen des Zooms: etwas weiter raus als die Uebersicht, rein bis Detailansicht. */
 export const scaleLimits = (bounds: Rect, screen: Screen) => {
   const fit = fitScale(bounds, screen);
+
   return { min: fit * 0.85, max: Math.max(fit * 12, 200) };
 };
 
@@ -45,7 +46,9 @@ export const clampTranslation = (
   "worklet";
   const sizePx = boundsSize * scale;
   const startPx = boundsStart * scale;
+
   if (sizePx <= screenSize) return (screenSize - sizePx) / 2 - startPx;
+
   return Math.min(-startPx, Math.max(screenSize - startPx - sizePx, value));
 };
 
