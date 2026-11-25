@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { pushRequestSchema } from "./schema";
 import { loadConfig, type ServerConfig } from "./config";
 import { PhotoStore, MAX_PHOTO_BYTES } from "./photos";
+import type { GardenSnapshot } from "../src/sync/types";
 import { GardenStore } from "./store";
 
 /**
@@ -15,7 +16,15 @@ const config = await loadConfig();
 const garden = new GardenStore(config.stateDir);
 const photos = new PhotoStore(config.stateDir);
 
-const json = (body: unknown, status = 200) =>
+/** Was die API als JSON beantwortet. */
+type Antwort =
+  | GardenSnapshot
+  | { revision: number; unchanged: true }
+  | { photoUri: string }
+  | { ok: true }
+  | { error: string };
+
+const json = (body: Antwort, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
@@ -38,7 +47,7 @@ const FAILURE_WINDOW_MS = 15 * 60 * 1000;
 const failures = new Map<string, { count: number; until: number }>();
 
 const clientKey = (request: Request): string =>
-  request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unbekannt";
+  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unbekannt";
 
 const isLockedOut = (key: string): boolean => {
   const entry = failures.get(key);

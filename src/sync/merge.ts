@@ -55,14 +55,15 @@ const mergeRecord = (a: PlantRecord, b: PlantRecord): PlantRecord => {
   const removed = laterOf(a.removed, b.removed);
   const speciesId = a.speciesId ?? b.speciesId;
 
-  return {
-    id: a.id,
-    // Die Art einer selbst gesetzten Pflanze aendert sich nie und wird deshalb
-    // nicht zusammengefuehrt, sondern uebernommen.
-    ...(speciesId ? { speciesId } : {}),
-    fields,
-    ...(removed ? { removed } : {}),
-  };
+  const merged: PlantRecord = { id: a.id, fields };
+
+  // Die Art einer selbst gesetzten Pflanze aendert sich nie und wird deshalb
+  // nicht zusammengefuehrt, sondern uebernommen.
+  if (speciesId) merged.speciesId = speciesId;
+
+  if (removed) merged.removed = removed;
+
+  return merged;
 };
 
 /**
@@ -173,13 +174,13 @@ export const resolvePlants = (
     plants.push({ id: record.id, speciesId: record.speciesId, position: { x: 0, y: 0 } });
   }
 
-  return plants
-    .filter((plant) => !records[plant.id]?.removed?.value)
-    .map((plant) => {
-      const fields = records[plant.id]?.fields;
+  return plants.flatMap((plant) => {
+    const record = records[plant.id];
 
-      return fields ? { ...plant, ...editsOf(fields) } : plant;
-    });
+    if (record?.removed?.value) return [];
+
+    return [record ? { ...plant, ...editsOf(record.fields) } : plant];
+  });
 };
 
 /** Fasst mehrere Aenderungen an derselben Pflanze zu einer zusammen. */
@@ -193,12 +194,15 @@ export const coalesceChange = (
   const fields =
     existing?.fields || change.fields ? { ...existing?.fields, ...change.fields } : undefined;
 
-  return {
-    id: change.id,
-    ...(speciesId ? { speciesId } : {}),
-    ...(fields ? { fields } : {}),
-    ...(removed === undefined ? {} : { removed }),
-  };
+  const coalesced: PlantChange = { id: change.id };
+
+  if (speciesId) coalesced.speciesId = speciesId;
+
+  if (fields) coalesced.fields = fields;
+
+  if (removed !== undefined) coalesced.removed = removed;
+
+  return coalesced;
 };
 
 /** Ids aller Pflanzen im Stand, sortiert -- fuer Tests und Diagnose. */

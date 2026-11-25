@@ -34,34 +34,26 @@ const quellen = ["App.tsx", ...dateien("src")].map((pfad) => ({
 /** Dateien, die nur im Browser geladen werden, dürfen Browser-Dinge benutzen. */
 const nurWeb = (pfad: string) => pfad.endsWith(".web.ts") || pfad.endsWith(".web.tsx");
 
+/** Die Dateien außer den reinen Web-Dateien, deren Quelltext `passt`. */
+const treffer = (passt: (inhalt: string) => boolean) =>
+  quellen.flatMap(({ pfad, inhalt }) => (!nurWeb(pfad) && passt(inhalt) ? [pfad] : []));
+
 describe("Plattform-Annahmen", () => {
   it("greift nirgends über window auf Browser-Dinge zu", () => {
-    const treffer = quellen
-      .filter(({ pfad }) => !nurWeb(pfad))
-      .filter(({ inhalt }) =>
+    expect(
+      treffer((inhalt) =>
         /\bwindow\.(location|matchMedia|innerWidth|innerHeight|devicePixelRatio)/.test(inhalt),
-      )
-      .map(({ pfad }) => pfad);
-
-    expect(treffer).toEqual([]);
+      ),
+    ).toEqual([]);
   });
 
   it("prüft die Plattform über Platform.OS, nicht über typeof window", () => {
-    const treffer = quellen
-      .filter(({ pfad }) => !nurWeb(pfad))
-      .filter(({ inhalt }) => /typeof window === ["']undefined["']/.test(inhalt))
-      .map(({ pfad }) => pfad);
-
-    expect(treffer).toEqual([]);
+    expect(treffer((inhalt) => /typeof window === ["']undefined["']/.test(inhalt))).toEqual([]);
   });
 
   it("fasst document nur an, wo vorher auf Web geprüft wurde", () => {
-    const treffer = quellen
-      .filter(({ pfad }) => !nurWeb(pfad))
-      .filter(({ inhalt }) => /\bdocument\./.test(inhalt))
-      .filter(({ inhalt }) => !inhalt.includes('Platform.OS !== "web"'))
-      .map(({ pfad }) => pfad);
-
-    expect(treffer).toEqual([]);
+    expect(
+      treffer((inhalt) => /\bdocument\./.test(inhalt) && !inhalt.includes('Platform.OS !== "web"')),
+    ).toEqual([]);
   });
 });

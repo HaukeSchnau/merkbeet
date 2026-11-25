@@ -25,10 +25,15 @@ export const isUnchanged = (result: PullResult): result is { revision: number; u
 
 const REQUEST_TIMEOUT_MS = 12_000;
 
+/** Eine Anfrage mit Kopfzeilen als einfachem Objekt, damit sie sich mit dem Zugangscode verbinden. */
+interface SyncRequest extends Omit<RequestInit, "headers"> {
+  headers?: Record<string, string>;
+}
+
 const request = async <T>(
   passcode: string,
   path: string,
-  init: RequestInit = {},
+  init: SyncRequest = {},
 ): Promise<SyncResult<T>> => {
   try {
     const response = await fetch(`${SERVER_BASE}${path}`, {
@@ -76,13 +81,13 @@ export const pushGarden = (
 /** Lädt ein Foto hoch und gibt den Pfad zurück, der synchronisiert wird. */
 export const uploadPhoto = (
   passcode: string,
-  bytes: Uint8Array,
+  bytes: Uint8Array<ArrayBuffer>,
   contentType: string,
 ): Promise<SyncResult<{ photoUri: string }>> =>
   request<{ photoUri: string }>(passcode, "/api/photos", {
     method: "POST",
     headers: { "content-type": contentType },
-    body: bytes as unknown as BodyInit,
+    body: bytes,
   });
 
 /** Prüft einen eingegebenen Code, ohne etwas zu verändern. */

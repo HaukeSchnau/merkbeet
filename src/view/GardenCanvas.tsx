@@ -282,11 +282,11 @@ export const GardenCanvas = ({
   const ringWidth = useDerivedValue(() => 2.5 / viewport.scale.value);
 
   useEffect(() => {
-    editing.value = editMode;
+    editing.set(editMode);
   }, [editMode, editing]);
 
   useEffect(() => {
-    placingNow.value = placing;
+    placingNow.set(placing);
   }, [placing, placingNow]);
 
   // Nur beim Über- und Unterschreiten der Schwellen in den JS-Thread springen.
@@ -298,19 +298,21 @@ export const GardenCanvas = ({
       const soll = detailGemeldet.value ? scale > DETAIL_OFF : scale >= DETAIL_ON;
 
       if (soll === detailGemeldet.value) return;
-      detailGemeldet.value = soll;
+      detailGemeldet.set(soll);
       runOnJS(setDetailed)(soll);
     },
     [],
   );
 
   useEffect(() => {
-    hitTargets.value = plants.map((plant) => ({
-      id: plant.id,
-      x: plant.position.x,
-      y: plant.position.y,
-      r: diameterOf(plant, speciesOf(plant.speciesId)) / 2,
-    }));
+    hitTargets.set(
+      plants.map((plant) => ({
+        id: plant.id,
+        x: plant.position.x,
+        y: plant.position.y,
+        r: diameterOf(plant, speciesOf(plant.speciesId)) / 2,
+      })),
+    );
   }, [plants, hitTargets]);
 
   const onLayout = useCallback(
@@ -368,9 +370,9 @@ export const GardenCanvas = ({
         Math.abs(plant.position.y - abgelegt.y) < 1e-6);
 
     if (!angekommen) return;
-    dropPending.value = false;
-    drag.dx.value = 0;
-    drag.dy.value = 0;
+    dropPending.set(false);
+    drag.dx.set(0);
+    drag.dy.set(0);
     setAbgelegt(null);
     setDraggedId(null);
   }, [abgelegt, plants, drag.dx, drag.dy, dropPending]);
@@ -402,19 +404,23 @@ export const GardenCanvas = ({
 
     const clamp = () => {
       "worklet";
-      viewport.tx.value = clampTranslation(
-        viewport.tx.value,
-        viewport.scale.value,
-        bounds.x,
-        bounds.width,
-        screen.width,
+      viewport.tx.set(
+        clampTranslation(
+          viewport.tx.value,
+          viewport.scale.value,
+          bounds.x,
+          bounds.width,
+          screen.width,
+        ),
       );
-      viewport.ty.value = clampTranslation(
-        viewport.ty.value,
-        viewport.scale.value,
-        bounds.y,
-        bounds.height,
-        screen.height,
+      viewport.ty.set(
+        clampTranslation(
+          viewport.ty.value,
+          viewport.scale.value,
+          bounds.y,
+          bounds.height,
+          screen.height,
+        ),
       );
     };
 
@@ -425,31 +431,31 @@ export const GardenCanvas = ({
         const hit = editing.value ? findPlant(event.x, event.y) : null;
 
         if (hit) {
-          drag.id.value = hit.id;
-          drag.dx.value = 0;
-          drag.dy.value = 0;
-          dragBase.x.value = hit.x;
-          dragBase.y.value = hit.y;
-          dropPending.value = false;
+          drag.id.set(hit.id);
+          drag.dx.set(0);
+          drag.dy.set(0);
+          dragBase.x.set(hit.x);
+          dragBase.y.set(hit.y);
+          dropPending.set(false);
           runOnJS(beginDrag)(hit.id);
         } else {
-          drag.id.value = null;
-          gestureStart.tx.value = viewport.tx.value;
-          gestureStart.ty.value = viewport.ty.value;
+          drag.id.set(null);
+          gestureStart.tx.set(viewport.tx.value);
+          gestureStart.ty.set(viewport.ty.value);
         }
       })
       .onUpdate((event) => {
         "worklet";
 
         if (drag.id.value !== null) {
-          drag.dx.value = event.translationX;
-          drag.dy.value = event.translationY;
+          drag.dx.set(event.translationX);
+          drag.dy.set(event.translationY);
 
           return;
         }
 
-        viewport.tx.value = gestureStart.tx.value + event.translationX;
-        viewport.ty.value = gestureStart.ty.value + event.translationY;
+        viewport.tx.set(gestureStart.tx.value + event.translationX);
+        viewport.ty.set(gestureStart.ty.value + event.translationY);
         clamp();
       })
       .onEnd(() => {
@@ -457,7 +463,7 @@ export const GardenCanvas = ({
         const id = drag.id.value;
 
         if (id === null) return;
-        drag.id.value = null;
+        drag.id.set(null);
 
         const x = dragBase.x.value + drag.dx.value / viewport.scale.value;
         const y = dragBase.y.value + drag.dy.value / viewport.scale.value;
@@ -468,9 +474,9 @@ export const GardenCanvas = ({
         // löschen. Bis der neue Stand ankommt, zeichnet der Knoten damit
         // weiter exakt dort, wo der Finger losgelassen hat -- auch wenn der
         // Punkt am Rand abgeschnitten wurde.
-        drag.dx.value = (zielX - dragBase.x.value) * viewport.scale.value;
-        drag.dy.value = (zielY - dragBase.y.value) * viewport.scale.value;
-        dropPending.value = true;
+        drag.dx.set((zielX - dragBase.x.value) * viewport.scale.value);
+        drag.dy.set((zielY - dragBase.y.value) * viewport.scale.value);
+        dropPending.set(true);
 
         runOnJS(commitMove)(id, zielX, zielY);
       })
@@ -482,18 +488,18 @@ export const GardenCanvas = ({
         "worklet";
 
         if (dropPending.value || drag.id.value === null) return;
-        drag.id.value = null;
-        drag.dx.value = 0;
-        drag.dy.value = 0;
+        drag.id.set(null);
+        drag.dx.set(0);
+        drag.dy.set(0);
         runOnJS(setDraggedId)(null);
       });
 
     const pinch = Gesture.Pinch()
       .onStart(() => {
         "worklet";
-        gestureStart.scale.value = viewport.scale.value;
-        gestureStart.tx.value = viewport.tx.value;
-        gestureStart.ty.value = viewport.ty.value;
+        gestureStart.scale.set(viewport.scale.value);
+        gestureStart.tx.set(viewport.tx.value);
+        gestureStart.ty.set(viewport.ty.value);
       })
       .onUpdate((event) => {
         "worklet";
@@ -501,9 +507,9 @@ export const GardenCanvas = ({
         const next = Math.min(limits.max, Math.max(limits.min, start * event.scale));
         const factor = next / start;
         // Der Punkt unter den Fingern soll beim Zoomen stehen bleiben.
-        viewport.scale.value = next;
-        viewport.tx.value = event.focalX - (event.focalX - gestureStart.tx.value) * factor;
-        viewport.ty.value = event.focalY - (event.focalY - gestureStart.ty.value) * factor;
+        viewport.scale.set(next);
+        viewport.tx.set(event.focalX - (event.focalX - gestureStart.tx.value) * factor);
+        viewport.ty.set(event.focalY - (event.focalY - gestureStart.ty.value) * factor);
         clamp();
       });
 
@@ -551,6 +557,8 @@ export const GardenCanvas = ({
     { scale: viewport.scale.value },
   ]);
 
+  const draggedPicture = draggedPlant ? plantPictures.get(draggedPlant.id) : undefined;
+
   return (
     <View style={styles.container} onLayout={onLayout}>
       {screen ? (
@@ -560,9 +568,9 @@ export const GardenCanvas = ({
               <Picture picture={detailed ? groundTexture : groundFlat} />
               <Picture picture={groundAnnotations} />
               <Picture picture={restingPlants} />
-              {draggedPlant && plantPictures.get(draggedPlant.id) ? (
+              {draggedPicture ? (
                 <Group transform={draggedTransform}>
-                  <Picture picture={plantPictures.get(draggedPlant.id)!} />
+                  <Picture picture={draggedPicture} />
                 </Group>
               ) : null}
               {selected ? (

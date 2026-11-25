@@ -6,6 +6,7 @@
  */
 import CanvasKitInit from "canvaskit-wasm/bin/full/canvaskit";
 import { JsiSkApi } from "@shopify/react-native-skia/lib/commonjs/skia/web";
+import type * as RNSkia from "@shopify/react-native-skia";
 import type { SkCanvas, SkPicture, SkRect, SkSize } from "@shopify/react-native-skia";
 
 export const CanvasKit = await CanvasKitInit();
@@ -15,9 +16,7 @@ export const CanvasKit = await CanvasKitInit();
  * Umweg ueber `unknown` bruecktt diese Kopien -- zur Laufzeit ist es dasselbe
  * Objekt.
  */
-export const Skia = JsiSkApi(
-  CanvasKit,
-) as unknown as typeof import("@shopify/react-native-skia").Skia;
+export const Skia = JsiSkApi(CanvasKit) as unknown as typeof RNSkia.Skia;
 
 export {
   BlurStyle,
@@ -35,9 +34,7 @@ export const createPicture = (
   const recorder = Skia.PictureRecorder();
 
   const canvas = recorder.beginRecording(
-    rect && "width" in rect && !("x" in rect)
-      ? Skia.XYWHRect(0, 0, rect.width, rect.height)
-      : (rect as SkRect | undefined),
+    rect && "width" in rect && !("x" in rect) ? Skia.XYWHRect(0, 0, rect.width, rect.height) : rect,
   );
 
   cb(canvas);

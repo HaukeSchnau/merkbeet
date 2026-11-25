@@ -2,6 +2,7 @@ import { registerRootComponent } from "expo";
 import { Platform } from "react-native";
 import "react-native-gesture-handler";
 
+import type * as AppModule from "./App";
 import { loadSkia } from "./src/view/skiaLoader";
 
 /**
@@ -9,7 +10,7 @@ import { loadSkia } from "./src/view/skiaLoader";
  * werden, bevor CanvasKit steht. Native registriert direkt, damit die
  * Root-Komponente sicher vor dem ersten Render bereitsteht.
  */
-const mount = () => registerRootComponent((require("./App") as typeof import("./App")).default);
+const mount = () => registerRootComponent((require("./App") as typeof AppModule).default);
 
 if (Platform.OS === "web") void loadSkia().then(mount);
 else mount();

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vite-plus/test";
+import { assert, describe, expect, it } from "vite-plus/test";
 
 import type { Plant } from "../garden/types";
 import { applyChange, applyChanges, coalesceChange, mergeRecords, resolvePlants } from "./merge";
@@ -34,7 +34,9 @@ describe("applyChange", () => {
 
     const cleared = applyChange(set, change({ id: "rose-1", fields: { notes: null } }), 200);
     expect(cleared.fields.notes).toEqual({ value: null, at: 200 });
-    expect(resolvePlants({ "rose-1": cleared }, SEED)[0].notes).toBeUndefined();
+    const [plant] = resolvePlants({ "rose-1": cleared }, SEED);
+    assert(plant);
+    expect(plant.notes).toBeUndefined();
   });
 });
 
@@ -54,6 +56,7 @@ describe("mergeRecords", () => {
     );
 
     const [plant] = resolvePlants(mergeRecords(vater, mutter), SEED);
+    assert(plant);
     expect(plant.position).toEqual({ x: 2, y: 3 });
     expect(plant.notes).toBe("blüht zum zweiten Mal");
   });
@@ -61,9 +64,9 @@ describe("mergeRecords", () => {
   it("lässt beim selben Feld den jüngeren Stand gewinnen", () => {
     const alt = applyChanges({}, [change({ id: "rose-1", fields: { notes: "alt" } })], 100);
     const neu = applyChanges({}, [change({ id: "rose-1", fields: { notes: "neu" } })], 200);
-    expect(resolvePlants(mergeRecords(alt, neu), SEED)[0].notes).toBe("neu");
+    expect(resolvePlants(mergeRecords(alt, neu), SEED)[0]?.notes).toBe("neu");
     // Auch in der anderen Richtung -- Merge darf nicht von der Reihenfolge abhängen.
-    expect(resolvePlants(mergeRecords(neu, alt), SEED)[0].notes).toBe("neu");
+    expect(resolvePlants(mergeRecords(neu, alt), SEED)[0]?.notes).toBe("neu");
   });
 
   it("ist kommutativ und assoziativ", () => {
@@ -124,7 +127,7 @@ describe("entfernen und hinzufügen", () => {
       100,
     );
 
-    expect(resolvePlants(records, SEED)[0].diameterMeters).toBe(0.9);
+    expect(resolvePlants(records, SEED)[0]?.diameterMeters).toBe(0.9);
   });
 });
 
@@ -180,7 +183,8 @@ describe("Zusammenspiel über drei Geräte", () => {
     const pc = mergeRecords(server, {});
 
     expect(resolvePlants(handyMutter, SEED)).toEqual(resolvePlants(pc, SEED));
-    const rose = resolvePlants(pc, SEED)[0];
+    const [rose] = resolvePlants(pc, SEED);
+    assert(rose);
     expect(rose.notes).toBe("Handy Vater");
     expect(rose.name).toBe("Kletterrose");
   });

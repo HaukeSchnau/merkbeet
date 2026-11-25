@@ -4,7 +4,12 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "node": "26.13.1",
+      "pnpm": "12.9.0"
+    },
     "apk": {
+      "extends": "base",
       "android": {
         "buildType": "apk"
       },
@@ -12,6 +17,7 @@
       "channel": "apk"
     },
     "store": {
+      "extends": "base",
       "android": {
         "buildType": "app-bundle"
       },

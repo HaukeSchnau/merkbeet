@@ -5,4 +5,5 @@ import { File } from "expo-file-system";
  * die das Dateisystem-Modul direkt lesen kann. Die Web-Variante steht in
  * `photoBytes.web.ts`; Metro wählt sie automatisch.
  */
-export const readPhotoBytes = (uri: string): Promise<Uint8Array> => new File(uri).bytes();
+export const readPhotoBytes = (uri: string): Promise<Uint8Array<ArrayBuffer>> =>
+  new File(uri).bytes();

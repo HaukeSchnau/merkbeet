@@ -8,7 +8,7 @@ plugin({
   name: "skia-node",
   setup(build) {
     build.module("@shopify/react-native-skia", async () => ({
-      exports: (await import("./skia-node")) as Record<string, unknown>,
+      exports: await import("./skia-node"),
       loader: "object",
     }));
   },

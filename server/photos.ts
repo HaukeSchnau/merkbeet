@@ -9,12 +9,12 @@ import { join } from "node:path";
  * Kopfzeilen mitschicken kann.
  */
 
-const TYPES: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/heic": "heic",
-};
+const TYPES = new Map([
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+  ["image/webp", "webp"],
+  ["image/heic", "heic"],
+]);
 
 export const MAX_PHOTO_BYTES = 12 * 1024 * 1024;
 
@@ -30,7 +30,7 @@ export class PhotoStore {
   }
 
   async save(bytes: ArrayBuffer, contentType: string | null): Promise<string | null> {
-    const extension = contentType ? TYPES[contentType.split(";")[0].trim()] : undefined;
+    const extension = contentType ? TYPES.get(contentType.split(";")[0]?.trim() ?? "") : undefined;
 
     if (!extension) return null;
     const name = `${randomBytes(16).toString("hex")}.${extension}`;

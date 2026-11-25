@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AppState } from "react-native";
 
 import type { SpeciesId } from "../garden/species";
@@ -61,9 +61,12 @@ export const useGarden = (): Garden => {
   // Der laufende Sync greift auf den aktuellen Stand zu, ohne dass sich die
   // Funktion bei jeder Änderung neu aufbaut.
   const gardenRef = useRef(garden);
-  gardenRef.current = garden;
   const passcodeRef = useRef(passcode);
-  passcodeRef.current = passcode;
+
+  useLayoutEffect(() => {
+    gardenRef.current = garden;
+    passcodeRef.current = passcode;
+  });
   const inFlight = useRef(false);
 
   useEffect(() => {

@@ -88,13 +88,15 @@ const withinArea = (canvas: SkCanvas, path: SkPath, draw: () => void) => {
 const insideOutline = (x: number, y: number, outline: Point[]): boolean => {
   let inside = false;
 
-  for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
-    const a = outline[i];
-    const b = outline[j];
+  // Jede Kante läuft vom vorigen Punkt zum aktuellen, die erste vom letzten Punkt aus.
+  let b = outline.at(-1);
 
-    if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) {
+  for (const a of outline) {
+    if (b && a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) {
       inside = !inside;
     }
+
+    b = a;
   }
 
   return inside;
@@ -201,7 +203,7 @@ const addOval = (b: SkPathBuilder, cx: number, cy: number, rx: number, ry: numbe
   b.addOval(Skia.XYWHRect(cx - rx, cy - ry, rx * 2, ry * 2));
 };
 
-const drawLawn = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng) => {
+const drawLawn = (canvas: SkCanvas, _path: SkPath, rect: Rect, rng: Rng) => {
   // Ohne Clip: der Rasen ist die unterste Schicht und deckt die ganze Fläche ab,
   // alles Weitere wird darüber gezeichnet.
   const patches = batch();
@@ -238,7 +240,7 @@ const drawHouse = (canvas: SkCanvas, path: SkPath, rect: Rect) => {
   });
 };
 
-const drawTerrace = (canvas: SkCanvas, path: SkPath, rect: Rect, rng: Rng) => {
+const drawTerrace = (canvas: SkCanvas, _path: SkPath, rect: Rect, rng: Rng) => {
   // Die Terrasse ist ein Rechteck; die Plattenraster passen exakt hinein,
   // ein Clip wäre nur Kosten.
   {

@@ -148,14 +148,16 @@ const drawCanopy = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng
 
 /** Ziergras: einzelne Halme, die vom Horst nach außen kippen. */
 const drawGrass = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng: Rng) => {
-  const colors = [palette.leafDark, palette.leafMid, palette.leafLight];
-  const groups = colors.map(() => batch());
+  const dark = batch();
+  const mid = batch();
+  const light = batch();
 
   for (let i = 0; i < 26; i++) {
     const angle = rng.range(0, Math.PI * 2);
     const length = rng.range(radius * 0.55, radius * 1.05);
     const bend = rng.range(-0.35, 0.35);
-    const group = groups[i % groups.length];
+    // Reihum dunkel, mittel, hell.
+    const group = i % 3 === 0 ? dark : i % 3 === 1 ? mid : light;
     group
       .moveTo(0, 0)
       .quadTo(
@@ -171,10 +173,16 @@ const drawGrass = (canvas: SkCanvas, radius: number, palette: PlantPalette, rng:
   paint.setStyle(PaintStyle.Stroke);
   paint.setStrokeCap(StrokeCap.Round);
   paint.setStrokeWidth(radius * 0.07);
-  groups.forEach((group, index) => {
-    paint.setColor(Skia.Color(colors[index]));
-    canvas.drawPath(group.detach(), paint);
-  });
+
+  for (const [color, path] of [
+    [palette.leafDark, dark],
+    [palette.leafMid, mid],
+    [palette.leafLight, light],
+  ] as const) {
+    paint.setColor(Skia.Color(color));
+    canvas.drawPath(path.detach(), paint);
+  }
+
   const heart = batch();
   addCircle(heart, 0, 0, radius * 0.18);
   canvas.drawPath(heart.detach(), fill(palette.leafDark, 0.85));

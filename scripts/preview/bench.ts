@@ -11,26 +11,13 @@ import type { SkCanvas } from "@shopify/react-native-skia";
 
 import { GARDEN_PLAN } from "../../src/garden/plan";
 import { speciesOf } from "../../src/garden/species";
-import {
-  createGroundAnnotationsPicture,
-  createGroundFlatPicture,
-  createGroundTexturePicture,
-} from "../../src/view/ground";
+import { createGroundFlatPicture, createGroundTexturePicture } from "../../src/view/ground";
 import { createPlantPicture } from "../../src/view/plantArt";
 import { Skia } from "./skia-node";
 
 const WIDTH = 780;
 const HEIGHT = 1436;
 const FRAMES = 40;
-
-const time = (label: string, run: () => void) => {
-  const started = Bun.nanoseconds();
-  run();
-  const ms = (Bun.nanoseconds() - started) / 1e6;
-  console.log(`${label.padEnd(34)} ${ms.toFixed(1).padStart(8)} ms`);
-
-  return ms;
-};
 
 const groundFlat = createGroundFlatPicture();
 const groundTexture = createGroundTexturePicture();

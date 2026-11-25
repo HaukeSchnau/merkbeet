@@ -31,7 +31,12 @@ const serverEnv = () => ({
   MERKBEET_PASSCODE_FILE: "",
 });
 
-const api = (path: string, init: RequestInit = {}) =>
+/** Eine Anfrage mit Kopfzeilen als einfachem Objekt, damit sie sich mit dem Zugangscode verbinden. */
+interface ApiRequest extends Omit<RequestInit, "headers"> {
+  headers?: Record<string, string>;
+}
+
+const api = (path: string, init: ApiRequest = {}) =>
   fetch(`${base}${path}`, {
     ...init,
     headers: {
@@ -119,7 +124,7 @@ describe("Sync", () => {
     const before = ((await (await api("/api/garden")).json()) as GardenSnapshot).revision;
     const after = await push([{ id: "rose-w1", fields: { notes: "erste Notiz" } }]);
     expect(after.revision).toBe(before + 1);
-    expect(after.records["rose-w1"].fields.notes?.value).toBe("erste Notiz");
+    expect(after.records["rose-w1"]?.fields.notes?.value).toBe("erste Notiz");
   });
 
   it("antwortet bei unveränderter Revision ohne Daten", async () => {
@@ -146,9 +151,9 @@ describe("Sync", () => {
 
     // Jede Änderung muss angekommen sein, egal wer zuerst dran war.
     const final = (await (await api("/api/garden")).json()) as GardenSnapshot;
-    expect(final.records["rose-s1"].fields.notes?.value).toBe("Vater");
-    expect(final.records["rose-s2"].fields.notes?.value).toBe("Mutter");
-    expect(final.records["rose-s3"].fields.notes?.value).toBe("PC");
+    expect(final.records["rose-s1"]?.fields.notes?.value).toBe("Vater");
+    expect(final.records["rose-s2"]?.fields.notes?.value).toBe("Mutter");
+    expect(final.records["rose-s3"]?.fields.notes?.value).toBe("PC");
     // Und jede Antwort muss eine eigene Revision getragen haben.
     expect(new Set(snapshots.map((s) => s.revision)).size).toBe(3);
   });
@@ -195,6 +200,6 @@ describe("Dauerhaftigkeit", () => {
     await startServer();
 
     const snapshot = (await (await api("/api/garden")).json()) as GardenSnapshot;
-    expect(snapshot.records["grass-w1"].fields.name?.value).toBe("Haaresgras");
+    expect(snapshot.records["grass-w1"]?.fields.name?.value).toBe("Haaresgras");
   });
 });

@@ -1,6 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
@@ -13,7 +13,7 @@ import { PasscodeScreen } from "./src/ui/PasscodeScreen";
 import { SyncNotice } from "./src/ui/SyncNotice";
 import { PlantSheet } from "./src/ui/PlantSheet";
 import { SpeciesPicker } from "./src/ui/SpeciesPicker";
-import { colors, spacing } from "./src/ui/theme";
+import { colors } from "./src/ui/theme";
 import { TopBar } from "./src/ui/TopBar";
 import { GardenCanvas } from "./src/view/GardenCanvas";
 
