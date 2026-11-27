@@ -3,8 +3,8 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nix-infra-modules = {
-      url = "github:HaukeSchnau/nix-infra-modules/b365d13637b9dc83c397df542b5112a50ac8cbb9";
+    projects-sdk = {
+      url = "github:HaukeSchnau/projects-sdk/v0.1.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -12,13 +12,13 @@
   outputs =
     {
       nixpkgs,
-      nix-infra-modules,
+      projects-sdk,
       ...
     }:
     let
-      toolchain = pkgs: import ./nix/toolchain.nix { inherit pkgs; sdk = nix-infra-modules; };
+      toolchain = pkgs: import ./nix/toolchain.nix { inherit pkgs; sdk = projects-sdk; };
 
-      src = nix-infra-modules.lib.projectSource {
+      src = projects-sdk.lib.projectSource {
         root = ./.;
         exclude = [
           "deploy"
@@ -132,7 +132,7 @@
           inherit web service releaseWeb;
         };
 
-      project = nix-infra-modules.lib.projectFlake {
+      project = projects-sdk.lib.projectFlake {
         inherit nixpkgs;
         modules = [ ./project.nix ];
         release =
